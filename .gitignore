@@ -1,0 +1,6 @@
+.DS_Store
+*.asar
+*.asar.backup*
+node_modules/
+__pycache__/
+*.pyc
