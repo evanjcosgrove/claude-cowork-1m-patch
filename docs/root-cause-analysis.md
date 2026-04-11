@@ -1,5 +1,7 @@
 # Root Cause Analysis: Enabling 1M Context in Claude Desktop
 
+How the feature flag was identified, why the obvious extract/repack approach fails, and how in-place binary patching works around V8's bytecode cache constraints.
+
 ## Finding the Feature Flag
 
 Searched for flag ID `3885610113` across extracted JS files. Found it in `.vite/build/index.js` line 4407.

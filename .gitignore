@@ -4,3 +4,13 @@
 node_modules/
 __pycache__/
 *.pyc
+.cursor/
+.remember/
+docs/superpowers/
+AGENTS.md
+Screenshot*
+
+# Internal artifacts — never commit
+up-to-date-logs/
+plans/
+REVIEW.md

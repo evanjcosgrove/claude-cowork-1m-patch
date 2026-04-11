@@ -34,7 +34,7 @@ fi
 ASAR_MODULE=""
 for candidate in \
   "$(npm root -g 2>/dev/null)/@electron/asar/lib/asar.js" \
-  "/private/tmp/claude/node_modules/@electron/asar/lib/asar.js" \
+  "/tmp/claude-patch/node_modules/@electron/asar/lib/asar.js" \
   "./node_modules/@electron/asar/lib/asar.js"; do
   if [ -f "$candidate" ]; then
     ASAR_MODULE="$candidate"
@@ -43,9 +43,13 @@ for candidate in \
 done
 
 if [ -z "$ASAR_MODULE" ]; then
-  echo "Installing @electron/asar..."
-  npm install --prefix /tmp/claude-patch @electron/asar 2>/dev/null
+  echo "Installing @electron/asar to /tmp/claude-patch..."
+  npm install --prefix /tmp/claude-patch @electron/asar
   ASAR_MODULE="/tmp/claude-patch/node_modules/@electron/asar/lib/asar.js"
+  if [ ! -f "$ASAR_MODULE" ]; then
+    echo "ERROR: Failed to install @electron/asar. Check your Node.js/npm installation."
+    exit 1
+  fi
 fi
 
 echo "Using asar module: $ASAR_MODULE"
@@ -62,20 +66,27 @@ fi
 echo "[1/6] Extracting entitlements..."
 codesign -d --entitlements :"$ENT_PATH" /Applications/Claude.app 2>/dev/null
 if [ ! -f "$ENT_PATH" ] || [ ! -s "$ENT_PATH" ]; then
-  echo "WARNING: Could not extract entitlements. Cowork VM may not work."
+  echo "WARNING: Could not extract entitlements."
+  echo "  Cowork will likely show 'Invalid installation' after patching."
+  echo "  Try: codesign -d --entitlements :/tmp/claude-entitlements.plist /Applications/Claude.app"
 fi
 
 # --- Step 2: Backup ---
-BACKUP_PATH="$BACKUP_DIR/app.asar.backup-$(date +%Y%m%d-%H%M%S)"
-echo "[2/6] Creating backup at $BACKUP_PATH..."
+BACKUP_TS="$(date +%Y%m%d-%H%M%S)"
+BACKUP_PATH="$BACKUP_DIR/app.asar.backup-$BACKUP_TS"
+PLIST_BACKUP_PATH="$BACKUP_DIR/Info.plist.backup-$BACKUP_TS"
+echo "[2/6] Creating backups..."
 cp "$ASAR_PATH" "$BACKUP_PATH"
+cp "$PLIST_PATH" "$PLIST_BACKUP_PATH"
+echo "  app.asar:  $BACKUP_PATH"
+echo "  Info.plist: $PLIST_BACKUP_PATH"
 
 # --- Step 3: Patch JS (binary in-place) ---
 echo "[3/6] Patching feature flag..."
-python3 << 'PYEOF'
+python3 << PYEOF
 import re, sys
 
-asar_path = '/Applications/Claude.app/Contents/Resources/app.asar'
+asar_path = '$ASAR_PATH'
 flag_id = b'3885610113'
 
 with open(asar_path, 'rb') as f:
@@ -97,7 +108,7 @@ if not match:
 
 old_js = match.group(0)
 # Build same-length replacement: !1/*____..._*/
-pad_len = len(old_js) - 5  # 5 = len("!1/**/")
+pad_len = len(old_js) - 6  # len("!1/*") + len("*/") = 6 fixed bytes
 new_js = b'!1/*' + b'_' * pad_len + b'*/'
 
 assert len(old_js) == len(new_js), f"Length mismatch: {len(old_js)} vs {len(new_js)}"
@@ -184,10 +195,10 @@ echo "[6/6] Re-signing with entitlements..."
 xattr -cr /Applications/Claude.app 2>/dev/null || true
 
 if [ -f "$ENT_PATH" ] && [ -s "$ENT_PATH" ]; then
-  codesign --force --sign - --entitlements "$ENT_PATH" /Applications/Claude.app 2>/dev/null
+  codesign --force --sign - --entitlements "$ENT_PATH" /Applications/Claude.app
   echo "  Signed with original entitlements (virtualization preserved)"
 else
-  codesign --force --sign - /Applications/Claude.app 2>/dev/null
+  codesign --force --sign - /Applications/Claude.app
   echo "  WARNING: Signed without entitlements. Cowork VM may show 'Invalid installation'."
 fi
 
@@ -217,4 +228,4 @@ echo "  2. Relaunch: open -a Claude"
 echo "  3. Start a NEW Cowork session (existing sessions keep old model)"
 echo "  4. Verify: model should show 'Opus 4.6 Extended' or similar"
 echo ""
-echo "Rollback: cp '$BACKUP_PATH' '$ASAR_PATH' && open -a Claude"
+echo "Rollback: cp '$BACKUP_PATH' '$ASAR_PATH' && cp '$PLIST_BACKUP_PATH' '$PLIST_PATH' && open -a Claude"
