@@ -6,4 +6,3 @@ permalink: /:title/
 exclude:
   - integrity-layers.md
   - root-cause-analysis.md
-  - img/
