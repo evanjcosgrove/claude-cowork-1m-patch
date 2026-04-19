@@ -1,0 +1,9 @@
+theme: minima
+title: claude-cowork-1m-patch writeup
+description: Restoring 1M context in Claude Desktop's Cowork mode — a writeup
+markdown: kramdown
+permalink: /:title/
+exclude:
+  - integrity-layers.md
+  - root-cause-analysis.md
+  - img/
