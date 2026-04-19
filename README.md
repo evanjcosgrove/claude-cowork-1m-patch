@@ -32,7 +32,7 @@ osascript -e 'quit app "Claude"'; sleep 3; open -a Claude
 
 ## Root Cause
 
-The Electron app's `app.asar` contains a model resolution function gating 1M context behind a server-side feature flag:
+The Electron app's `app.asar` contains a model-resolution function with **two independent gates** that both must pass for `[1m]` to be appended:
 
 ```javascript
 function ZAt(t) {
@@ -42,9 +42,12 @@ function ZAt(t) {
 }
 ```
 
-`Sn("3885610113")` checks the flag server-side. When the flag is **on**, the function appends `[1m]` to model names like `opus-4-6`, signaling the API to allocate 1M context. When the flag is **off** (current state since ~March 19), `!Sn(...)` evaluates to `true`, the ternary short-circuits, and `[1m]` is never appended. You get 200K regardless of your plan.
+The ternary is a three-condition OR — if **any** is true, the model name is returned unchanged.
 
-The function and variable names (`ZAt`, `Sn`) are minified and change between app versions. The flag ID `3885610113` is stable across builds — the patch script searches for that, not the variable names.
+- **Gate A — Server feature flag.** `Sn("3885610113")` checks a server-side flag. When **off** (current state since 2026-03-19), `!Sn(...)` evaluates to `true`, the ternary short-circuits, and `[1m]` is never appended. You get 200K regardless of your plan.
+- **Gate B — Model allow-list.** Even with the flag on, the regex `/sonnet-4-6|opus-4-6/i` only allows 1M for those two model names. When Anthropic shipped `claude-opus-4-7` to Cowork on 2026-04-18, the regex did **not** match it — so even an already-patched binary downgrades 4-7 sessions to 200K.
+
+The patch addresses both gates with two same-length JS swaps. The function and variable names (`ZAt`, `Sn`) are minified and change between app versions. The flag ID `3885610113` and the literal regex body `sonnet-4-6|opus-4-6` are stable byte anchors across builds — the patch script searches for those, not the variable names.
 
 ## Log Evidence
 
@@ -55,6 +58,8 @@ The function and variable names (`ZAt`, `Sn`) are minified and change between ap
 | 2026-03-19 19:59:08 | **First broken session** — `model: claude-opus-4-6` (same app version, flag rollback) |
 | 2026-03-31 → 2026-04-06 | 110 consecutive sessions, all without `[1m]` |
 | 2026-04-03 09:08 | Context window exceeded error — confirmed hitting 200K wall |
+| 2026-04-18 20:19:30 | Last working `opus-4-6[1m]` session under v1 patch |
+| 2026-04-18 20:19:53 | **Second regression** — first `opus-4-7` session, no `[1m]`. Same app version (1.569.0), v1 patch still installed. Model allow-list regex doesn't recognize 4-7. |
 
 ## How It Works
 
@@ -62,7 +67,7 @@ The patch modifies one JS expression in the asar, but the app enforces four inte
 
 | Layer | What it checks | How the patch handles it |
 |-------|---------------|--------------------------|
-| **1. JS feature flag** | `!Sn("3885610113")` calls server-side flag | Replace with `!1/*___________*/` — same 17 bytes, evaluates to `false` |
+| **1. JS application logic** | Two gates inside `ZAt`: server feature flag + model allow-list regex | **1a:** Replace `!Sn("3885610113")` with `!1/*___________*/` (same 17 bytes, evaluates to `false`). **1b:** Replace regex body `sonnet-4-6\|opus-4-6` with `opus-4-[67](?:)(?:)` (same 19 bytes, matches both `opus-4-6` and `opus-4-7`). |
 | **2. Per-file integrity** | SHA256 of `index.js` in asar header | Recompute file hash + block hashes, replace in header (same-length) |
 | **3. Header integrity** | SHA256 of asar header in `Info.plist` | Recompute via `@electron/asar` `getRawHeader()`, write to plist |
 | **4. Code signature** | macOS entitlements for Cowork's VM sandbox | Extract original entitlements before patching, re-sign with `--entitlements` |
@@ -78,7 +83,8 @@ After re-signing, Cowork may show "Invalid installation" if `com.apple.security.
 ## Caveats
 
 - **Auto-updates overwrite the patch.** Re-run `./patch-claude-1m.sh` after each Claude Desktop update.
-- **Minified names change between versions.** The flag ID `3885610113` is the stable anchor — the script matches by flag ID, not variable names.
+- **Minified names change between versions.** The script matches by two stable byte anchors: the flag ID `3885610113` (Layer 1a) and the literal regex body `sonnet-4-6|opus-4-6` (Layer 1b). Variable and function names (`ZAt`, `Sn`) are not relied on.
+- **Opus-only scope.** Layer 1b's new regex `opus-4-[67]` matches `opus-4-6` and `opus-4-7` only. The original regex also matched `sonnet-4-6` — that match is intentionally dropped so the rule is deterministic. If/when Anthropic ships `opus-4-8`, re-run the script after editing the byte literal in step 4 (or open an issue).
 - **This modifies the app binary.** The script creates a backup on every run. Fully reversible (see Rollback).
 - **The `ANTHROPIC_DEFAULT_OPUS_MODEL` env var doesn't help.** `LocalAgentModeSessionManager` has its own model resolution path that ignores environment overrides.
 - **ToS:** This is a personal workaround for a documented regression affecting paying customers. Use at your own risk.

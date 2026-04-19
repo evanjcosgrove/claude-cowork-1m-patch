@@ -2,13 +2,21 @@
 set -euo pipefail
 
 # patch-claude-1m.sh — Restore 1M context window in Claude Desktop Cowork
-# Bypasses server-side feature flag 3885610113 that gates [1m] model suffix
-# Safe to run multiple times (idempotent). Creates backups every run.
+#
+# Two same-length JS swaps inside the model-resolution function (`ZAt`):
+#   Layer 1a — bypass server-side feature flag 3885610113 that gates [1m] suffix
+#   Layer 1b — broaden the model allow-list regex /sonnet-4-6|opus-4-6/i so it
+#              also matches opus-4-7 (Anthropic shipped 4-7 to Cowork without
+#              re-enabling 1M for it). New regex: /opus-4-[67](?:)(?:)/i.
+#
+# Safe to run multiple times (idempotent): each layer is detected by its own
+# byte anchor in the asar and applied only when missing. Backups every run.
 
 ASAR_PATH="/Applications/Claude.app/Contents/Resources/app.asar"
 PLIST_PATH="/Applications/Claude.app/Contents/Info.plist"
 BACKUP_DIR="$HOME/Desktop"
 FLAG_ID="3885610113"
+REGEX_ANCHOR="sonnet-4-6|opus-4-6"
 ENT_PATH="/tmp/claude-entitlements.plist"
 
 echo "=== Claude Desktop 1M Context Patch ==="
@@ -54,16 +62,28 @@ fi
 
 echo "Using asar module: $ASAR_MODULE"
 
-# --- Check if already patched ---
-if ! grep -q "$FLAG_ID" "$ASAR_PATH" 2>/dev/null; then
+# --- Determine patch state from byte anchors ---
+# Each layer's "unpatched" anchor is searched independently so users with the
+# v1 patch already applied get only the missing Layer 1b update.
+HAS_FLAG=0
+HAS_REGEX=0
+grep -q "$FLAG_ID" "$ASAR_PATH" 2>/dev/null && HAS_FLAG=1
+grep -q -F "$REGEX_ANCHOR" "$ASAR_PATH" 2>/dev/null && HAS_REGEX=1
+
+if [ "$HAS_FLAG" -eq 0 ] && [ "$HAS_REGEX" -eq 0 ]; then
   echo ""
-  echo "Already patched (flag ID $FLAG_ID not found in asar)."
-  echo "To re-patch after an update, reinstall Claude Desktop first."
+  echo "Already fully patched (both anchors absent from asar)."
+  echo "To re-patch after a Claude Desktop update, run this script again."
   exit 0
 fi
 
+echo ""
+echo "Patch state:"
+echo "  Layer 1a (flag bypass):       $([ $HAS_FLAG  -eq 1 ] && echo NEEDED || echo done)"
+echo "  Layer 1b (model allow-list):  $([ $HAS_REGEX -eq 1 ] && echo NEEDED || echo done)"
+
 # --- Step 1: Extract entitlements ---
-echo "[1/6] Extracting entitlements..."
+echo "[1/7] Extracting entitlements..."
 codesign -d --entitlements :"$ENT_PATH" /Applications/Claude.app 2>/dev/null
 if [ ! -f "$ENT_PATH" ] || [ ! -s "$ENT_PATH" ]; then
   echo "WARNING: Could not extract entitlements."
@@ -75,15 +95,16 @@ fi
 BACKUP_TS="$(date +%Y%m%d-%H%M%S)"
 BACKUP_PATH="$BACKUP_DIR/app.asar.backup-$BACKUP_TS"
 PLIST_BACKUP_PATH="$BACKUP_DIR/Info.plist.backup-$BACKUP_TS"
-echo "[2/6] Creating backups..."
+echo "[2/7] Creating backups..."
 cp "$ASAR_PATH" "$BACKUP_PATH"
 cp "$PLIST_PATH" "$PLIST_BACKUP_PATH"
 echo "  app.asar:  $BACKUP_PATH"
 echo "  Info.plist: $PLIST_BACKUP_PATH"
 
-# --- Step 3: Patch JS (binary in-place) ---
-echo "[3/6] Patching feature flag..."
-python3 << PYEOF
+# --- Step 3: Patch Layer 1a (feature flag bypass) ---
+if [ "$HAS_FLAG" -eq 1 ]; then
+  echo "[3/7] Patching Layer 1a (feature flag bypass)..."
+  python3 << PYEOF
 import re, sys
 
 asar_path = '$ASAR_PATH'
@@ -121,9 +142,45 @@ with open(asar_path, 'wb') as f:
 
 print(f"  Replaced: {old_js.decode()} -> {new_js.decode()}")
 PYEOF
+else
+  echo "[3/7] Layer 1a already applied — skipping."
+fi
 
-# --- Step 4: Update per-file integrity hashes ---
-echo "[4/6] Updating integrity hashes..."
+# --- Step 4: Patch Layer 1b (model allow-list broaden to include opus-4-7) ---
+if [ "$HAS_REGEX" -eq 1 ]; then
+  echo "[4/7] Patching Layer 1b (model allow-list)..."
+  python3 << PYEOF
+import sys
+
+asar_path = '$ASAR_PATH'
+old = b'sonnet-4-6|opus-4-6'   # 19 bytes — matches sonnet-4-6, opus-4-6
+new = b'opus-4-[67](?:)(?:)'   # 19 bytes — matches ONLY opus-4-6, opus-4-7
+
+assert len(old) == len(new), f"Length mismatch: {len(old)} vs {len(new)}"
+
+with open(asar_path, 'rb') as f:
+    data = f.read()
+
+original_size = len(data)
+count = data.count(old)
+if count != 1:
+    print(f"ERROR: Expected 1 occurrence of model regex anchor, found {count}")
+    sys.exit(1)
+
+data = data.replace(old, new, 1)
+assert len(data) == original_size
+
+with open(asar_path, 'wb') as f:
+    f.write(data)
+
+print(f"  Replaced: /{old.decode()}/i -> /{new.decode()}/i")
+PYEOF
+else
+  echo "[4/7] Layer 1b already applied — skipping."
+fi
+
+# --- Step 5: Update per-file integrity hashes ---
+echo "[5/7] Updating integrity hashes..."
 HASH_OUTPUT=$(node -e "
 const asar = require('$ASAR_MODULE');
 const crypto = require('crypto');
@@ -177,8 +234,8 @@ print(f"  File hash: {hash_data['oldHash'][:16]}... -> {hash_data['newHash'][:16
 print(f"  Changed blocks: {len(hash_data['changedBlocks'])}")
 PYEOF
 
-# --- Step 5: Update Info.plist header hash ---
-echo "[5/6] Updating Info.plist..."
+# --- Step 6: Update Info.plist header hash ---
+echo "[6/7] Updating Info.plist..."
 NEW_HEADER_HASH=$(node -e "
 const asar = require('$ASAR_MODULE');
 const crypto = require('crypto');
@@ -190,8 +247,8 @@ plutil -replace ElectronAsarIntegrity.Resources/app\\.asar.hash \
   -string "$NEW_HEADER_HASH" "$PLIST_PATH"
 echo "  Header hash: $NEW_HEADER_HASH"
 
-# --- Step 6: Re-sign with entitlements ---
-echo "[6/6] Re-signing with entitlements..."
+# --- Step 7: Re-sign with entitlements ---
+echo "[7/7] Re-signing with entitlements..."
 xattr -cr /Applications/Claude.app 2>/dev/null || true
 
 if [ -f "$ENT_PATH" ] && [ -s "$ENT_PATH" ]; then
@@ -209,7 +266,13 @@ if grep -q "$FLAG_ID" "$ASAR_PATH" 2>/dev/null; then
   echo "FAILED: Flag ID still present in asar!"
   exit 1
 fi
-echo "  Feature flag: BYPASSED"
+echo "  Layer 1a (feature flag):     BYPASSED"
+
+if grep -q -F "$REGEX_ANCHOR" "$ASAR_PATH" 2>/dev/null; then
+  echo "FAILED: Original model regex still present in asar!"
+  exit 1
+fi
+echo "  Layer 1b (model allow-list): BROADENED (matches opus-4-6 and opus-4-7)"
 
 VIRT_ENT=$(codesign -d --entitlements :- /Applications/Claude.app 2>/dev/null | grep -c "virtualization" || true)
 if [ "$VIRT_ENT" -gt 0 ]; then
@@ -226,6 +289,7 @@ echo "Next steps:"
 echo "  1. Quit Claude Desktop: osascript -e 'quit app \"Claude\"'"
 echo "  2. Relaunch: open -a Claude"
 echo "  3. Start a NEW Cowork session (existing sessions keep old model)"
-echo "  4. Verify: model should show 'Opus 4.6 Extended' or similar"
+echo "  4. Verify: model should show 'Opus 4.6 Extended', 'Opus 4.7 Extended', or similar"
+echo "     (or grep ~/Library/Logs/Claude/cowork_vm_node.log for 'opus-4-7[1m]')"
 echo ""
 echo "Rollback: cp '$BACKUP_PATH' '$ASAR_PATH' && cp '$PLIST_BACKUP_PATH' '$PLIST_PATH' && open -a Claude"
