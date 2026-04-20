@@ -2,15 +2,13 @@
 
 Restore 1M context windows in Claude Desktop's Cowork mode. Bypasses a server-side feature flag that silently downgraded Max plan subscribers from 1M to 200K context on March 19, 2026.
 
-<p align="center">
-  <img src="docs/img/verification.png" alt="Claude Desktop showing claude-opus-4-6[1m] with 547.9k/1m tokens" width="700">
-</p>
+
 
 ## The Problem
 
 Feature flag `3885610113` controls whether the Cowork model resolution function appends `[1m]` to model names. On 2026-03-19, the flag was rolled back server-side — same app version, same session setup, different behavior. Log timestamps confirm the boundary: `18:36` `[1m]`, `19:59` no `[1m]`. The CLI was unaffected; only Desktop's `LocalAgentModeSessionManager` was broken.
 
-17+ users reported it across GitHub issues [#37413](https://github.com/anthropics/claude-code/issues/37413), [#36760](https://github.com/anthropics/claude-code/issues/36760), [#36351](https://github.com/anthropics/claude-code/issues/36351) with no resolution after over a month of silence from Anthropic. Max subscribers ($200/month) are paying for 1M and getting 200K.
+17+ users reported it across GitHub issues [#37413](https://github.com/anthropics/claude-code/issues/37413), [#36760](https://github.com/anthropics/claude-code/issues/36760), [#36351](https://github.com/anthropics/claude-code/issues/36351), and [#33154](https://github.com/anthropics/claude-code/issues/33154) with no resolution after over a month of silence from Anthropic. Max subscribers ($200/month) are paying for 1M and getting 200K.
 
 ## Quick Start
 
@@ -51,26 +49,30 @@ The patch addresses both gates with two same-length JS swaps. The function and v
 
 ## Log Evidence
 
-| Timestamp | Event |
-|-----------|-------|
-| 2026-03-18 06:51 | `[1m]` first observed in Cowork sessions |
-| 2026-03-19 18:36:58 | **Last working session** — `model: claude-opus-4-6[1m]` |
-| 2026-03-19 19:59:08 | **First broken session** — `model: claude-opus-4-6` (same app version, flag rollback) |
-| 2026-03-31 → 2026-04-06 | 110 consecutive sessions, all without `[1m]` |
-| 2026-04-03 09:08 | Context window exceeded error — confirmed hitting 200K wall |
-| 2026-04-18 20:19:30 | Last working `opus-4-6[1m]` session under flag-bypass-only patch |
-| 2026-04-18 20:19:53 | **Second regression** — first `opus-4-7` session, no `[1m]`. Same app version (1.569.0), flag-bypass patch still installed. Model allow-list regex doesn't recognize 4-7. |
+
+| Timestamp               | Event                                                                                                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-03-18 06:51        | `[1m]` first observed in Cowork sessions                                                                                                                                  |
+| 2026-03-19 18:36:58     | **Last working session** — `model: claude-opus-4-6[1m]`                                                                                                                   |
+| 2026-03-19 19:59:08     | **First broken session** — `model: claude-opus-4-6` (same app version, flag rollback)                                                                                     |
+| 2026-03-31 → 2026-04-06 | 110 consecutive sessions, all without `[1m]`                                                                                                                              |
+| 2026-04-03 09:08        | Context window exceeded error — confirmed hitting 200K wall                                                                                                               |
+| 2026-04-18 20:19:30     | Last working `opus-4-6[1m]` session under flag-bypass-only patch                                                                                                          |
+| 2026-04-18 20:19:53     | **Second regression** — first `opus-4-7` session, no `[1m]`. Same app version (1.569.0), flag-bypass patch still installed. Model allow-list regex doesn't recognize 4-7. |
+
 
 ## How It Works
 
 The patch modifies one JS expression in the asar, but the app enforces four integrity layers that all break when any file changes. Each layer must be updated in sequence:
 
-| Layer | What it checks | How the patch handles it |
-|-------|---------------|--------------------------|
-| **1. JS application logic** | Two gates inside `ZAt`: server feature flag + model allow-list regex | **1a:** Replace `!Sn("3885610113")` with `!1/*___________*/` (same 17 bytes, evaluates to `false`). **1b:** Replace regex body `sonnet-4-6\|opus-4-6` with `opus-4-[67](?:)(?:)` (same 19 bytes, matches both `opus-4-6` and `opus-4-7`). |
-| **2. Per-file integrity** | SHA256 of `index.js` in asar header | Recompute file hash + block hashes, replace in header (same-length) |
-| **3. Header integrity** | SHA256 of asar header in `Info.plist` | Recompute via `@electron/asar` `getRawHeader()`, write to plist |
-| **4. Code signature** | macOS entitlements for Cowork's VM sandbox | Extract original entitlements before patching, re-sign with `--entitlements` |
+
+| Layer                       | What it checks                                                       | How the patch handles it                                                                                                                                                                                                                 |
+| --------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1. JS application logic** | Two gates inside `ZAt`: server feature flag + model allow-list regex | **1a:** Replace `!Sn("3885610113")` with `!1/*___________*/` (same 17 bytes, evaluates to `false`). **1b:** Replace regex body `sonnet-4-6|opus-4-6` with `opus-4-[67](?:)(?:)` (same 19 bytes, matches both `opus-4-6` and `opus-4-7`). |
+| **2. Per-file integrity**   | SHA256 of `index.js` in asar header                                  | Recompute file hash + block hashes, replace in header (same-length)                                                                                                                                                                      |
+| **3. Header integrity**     | SHA256 of asar header in `Info.plist`                                | Recompute via `@electron/asar` `getRawHeader()`, write to plist                                                                                                                                                                          |
+| **4. Code signature**       | macOS entitlements for Cowork's VM sandbox                           | Extract original entitlements before patching, re-sign with `--entitlements`                                                                                                                                                             |
+
 
 The key constraint: all replacements must be **same-length**. Changing any file offset invalidates V8's compiled bytecode cache, causing `EXC_BREAKPOINT` crashes on launch. This rules out the obvious approach (extract the asar, edit the JS, repack) — repacking inflates the archive from 19MB to 60MB because native `.node` binaries get pulled in from `app.asar.unpacked`.
 
@@ -84,7 +86,7 @@ After re-signing, Cowork may show "Invalid installation" if `com.apple.security.
 
 - **Auto-updates overwrite the patch.** Re-run `./patch-claude-1m.sh` after each Claude Desktop update.
 - **Minified names change between versions.** The script matches by two stable byte anchors: the flag ID `3885610113` (Layer 1a) and the literal regex body `sonnet-4-6|opus-4-6` (Layer 1b). Variable and function names (`ZAt`, `Sn`) are not relied on.
-- **Opus-only scope.** Layer 1b's new regex `opus-4-[67]` matches `opus-4-6` and `opus-4-7` only. The original regex also matched `sonnet-4-6` — that match is intentionally dropped so the rule is deterministic. If/when Anthropic ships `opus-4-8`, re-run the script after editing the byte literal in step 4 (or open an issue).
+- **Opus-only scope.** Layer 1b's new regex `opus-4-[67]` matches `opus-4-6` and `opus-4-7` only. The original regex also matched `sonnet-4-6` — that match is intentionally dropped so the rule is deterministic. If/when Anthropic ships `opus-4-8`, re-run the script after editing the 19-byte literal in the Layer 1b Python block of `patch-claude-1m.sh` (or open an issue).
 - **This modifies the app binary.** The script creates a backup on every run. Fully reversible (see Rollback).
 - **The `ANTHROPIC_DEFAULT_OPUS_MODEL` env var doesn't help.** `LocalAgentModeSessionManager` has its own model resolution path that ignores environment overrides.
 - **ToS:** This is a personal workaround for a documented regression affecting paying customers. Use at your own risk.

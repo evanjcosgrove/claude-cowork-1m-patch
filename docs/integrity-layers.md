@@ -66,7 +66,7 @@ V8 caches compiled JS bytecode against the asar's file offsets. Any change to by
 
 **Bypass:** Compute the new SHA256 of the patched file using `@electron/asar`'s `extractFile` + `crypto.createHash`. Replace the old 64-hex-char hash with the new 64-hex-char hash (same length, in-place in the header).
 
-**Prior art:** CVE-2024-46992 (ASAR integrity bypass via header manipulation); CVE-2025-55305 (ASAR integrity bypass via V8 heap snapshot resource modification, affecting Signal, 1Password, Slack); Karol Mazurek's "Cracking Electron Integrity."
+**Prior art:** CVE-2024-46992 (ASAR integrity bypass via header manipulation — Electron's advisory scopes the vulnerability to Windows under specific fuse configurations; cited here for the same general integrity-layer pattern, not as a claim that Claude Desktop on macOS was affected by that specific CVE); CVE-2025-55305 (ASAR integrity bypass via V8 heap snapshot resource modification, affecting Signal, 1Password, Slack); Karol Mazurek's "Cracking Electron Integrity."
 
 ---
 
