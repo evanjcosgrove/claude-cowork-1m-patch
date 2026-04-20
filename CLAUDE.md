@@ -1,13 +1,13 @@
 # claude-cowork-1m-patch
 
-Client-side patch to restore 1M context windows in Claude Desktop's Cowork mode. Neutralizes two JS gates inside the model-resolution function `ZAt`: the server feature flag `3885610113` and the `/sonnet-4-6|opus-4-6/i` model allow-list (broadened to also cover `opus-4-7`).
+Client-side patch to restore 1M context windows in Claude Desktop's Cowork mode. Neutralizes two JS gates in the model-resolution function: the server feature flag `3885610113` and a model allow-list (broadened to cover `opus-4-7`).
 
 See [README.md](README.md) for full user-facing documentation.
 
 ## Project Structure
 
 ```
-patch-claude-1m.sh          # Main patch script (bash) — the only executable
+patch-claude-1m.sh          # Main patch script (bash) - the only executable
 docs/root-cause-analysis.md # How the flag was found and the failed extract/repack approach
 docs/integrity-layers.md    # The 4 integrity layers and their bypasses
 ```
@@ -16,53 +16,33 @@ No build step. Script self-installs `@electron/asar` (pinned to `4.2.0`, install
 
 ## Running the Patch
 
-```bash
-./patch-claude-1m.sh
-```
-
-**Prerequisites:** Node.js, Python 3, macOS with Claude Desktop at `/Applications/Claude.app` (override with `CLAUDE_APP_PATH=/path/to/Claude.app`), plus `codesign` and `plutil` (Xcode CLT / macOS).
-
-**Env overrides:**
-
-- `CLAUDE_APP_PATH` — point at a non-default Claude.app bundle (e.g. a copy for testing).
-- `ALLOW_PATCH_WITHOUT_ENTITLEMENTS=1` — skip the entitlements hard-fail. Cowork will likely show "Invalid installation" until entitlements are re-extracted, so this is an escape hatch, not a default.
-- `PATCH_RESTORE_ON_FAIL=1` — on any non-zero exit *after* the backup is taken, automatically restore from that backup. Default behavior is to print the copy-pasteable restore command and let you decide.
-
-**Verification:** Script prints `Layer 1a (feature flag): BYPASSED`, `Layer 1b (model allow-list): BROADENED`, and `Virtualization entitlement: PRESENT` on success. After relaunching Claude, new Cowork sessions on Opus 4.6 or 4.7 should show the `[1m]` suffix in `~/Library/Logs/Claude/cowork_vm_node.log`.
+See [README.md § Quick Start](README.md#quick-start) for install / env vars / verification. This file captures only things that matter when *modifying* the script.
 
 ## Architecture Decisions
 
-- **In-place binary patching** over extract/repack: Extracting the asar inflates it from 19MB to 60MB (native `.node` binaries get pulled from `app.asar.unpacked`), causing `EXC_BREAKPOINT` crashes from V8 bytecode cache offset mismatches.
-- **Two same-length JS swaps** in the model-resolution function (minified name rotates: `ZAt`, `A7e`, etc.). Both must preserve byte length so V8's compiled bytecode cache stays valid.
-  - **1a** `!Sn("3885610113")` → `!1/*___________*/` (17 bytes) — neutralizes the server feature flag. Variable name (`Sn`/`Ti`/...) rotates; the flag ID is the stable byte anchor.
-  - **1b — TWO known forms**, detected at runtime by the preflight:
-    - **Form A (regex)** for older asars (< v1.3109): `sonnet-4-6|opus-4-6` → `opus-4-[67](?:)(?:)` (19 bytes). `(?:)(?:)` are zero-width non-capturing groups serving as 8 bytes of padding.
-    - **Form B (array)** for newer asars (≥ v1.3109): `["claude-sonnet-4-6","claude-opus-4-6"]` → `[ "claude-opus-4-6","claude-opus-4-7" ]` (39 bytes). The newer asar swapped the regex literal for a JS array used with `.some(t => e.includes(t))` (substring match). Same-length swap; sonnet intentionally dropped per "Opus-only scope" caveat.
-- **Idempotent state detection** via Python preflight, not raw `grep`. The preflight classifies the asar into one of `needs_1a` / `needs_1b` / `needs_both` / `already_done` / `unknown` AND detects which Layer 1b form (regex/array/none) the asar uses, using the same byte anchors as the patch blocks (so the matcher and the patcher cannot drift). `unknown` triggers a clear "open an issue with your app version" exit; this includes the case where Layer 1a's anchor is present but Layer 1b's form isn't recognized in either variant — refusing to half-patch instead of leaving the asar in an inconsistent state. Verification at the end re-runs the same matcher and requires `already_done`.
-- **Atomic writes** for every asar mutation. Each Python heredoc that modifies `app.asar` writes to a same-directory `tempfile.mkstemp` file, calls `flush` + `os.fsync`, then `os.replace`s onto the asar — so a crash mid-write can never leave the asar half-written.
-- **Single `EXIT` trap** (covers explicit `exit N`, `set -e` failures, and `INT`/`TERM` signals; disarms itself before exiting to avoid re-fire). After the backup step it surfaces a copy-pasteable rollback command on any failure, or auto-restores when `PATCH_RESTORE_ON_FAIL=1` is set.
-- **Four integrity layers** must be updated in sequence: JS → per-file hash → header hash → code signature. Skipping any one causes launch failure. Layer 1 holds two JS gates; Layers 2–4 are unchanged.
+- **In-place binary patching** over extract/repack. Extract/repack inflates the asar from 19MB→60MB (native `.node` binaries get pulled from `app.asar.unpacked`) and crashes V8 on launch with `EXC_BREAKPOINT` from bytecode-cache offset mismatches. Every asar mutation in this script must preserve byte length.
+- **Two same-length JS swaps** neutralize the model-resolution gates. Layer 1a swaps the flag check; Layer 1b swaps the model allow-list and exists in two forms (regex for < v1.3109, JS array for ≥ v1.3109) auto-detected by preflight. Full byte spec: [docs/integrity-layers.md § Layer 1](docs/integrity-layers.md#layer-1---application-logic-two-js-gates).
+- **Idempotent state detection** via Python preflight, not raw `grep`. Classifies the asar into `needs_1a` / `needs_1b` / `needs_both` / `already_done` / `unknown` AND detects which Layer 1b form is present, using the *same* byte anchors as the patch blocks so the matcher and the patcher cannot drift. `unknown` (including "Layer 1a anchor present but Layer 1b form unrecognized") aborts rather than half-patches. Verification at the end re-runs the matcher and requires `already_done`.
+- **Atomic writes** for every asar mutation. Python heredocs write to a same-directory `tempfile.mkstemp`, `flush` + `fsync`, then `os.replace` - a crash mid-write can never leave the asar half-written.
+- **Single `EXIT` trap** covers explicit `exit N`, `set -e` failures, and `INT`/`TERM`; disarms itself before exiting to avoid re-fire. After the backup step, it surfaces a copy-pasteable rollback command on failure, or auto-restores when `PATCH_RESTORE_ON_FAIL=1`.
+- **Four integrity layers** must be updated in sequence: JS → per-file hash → header hash → code signature. Skipping one causes launch failure. Layer 1 holds two JS gates; Layers 2–4 are unchanged between versions.
 
 ## Non-obvious Gotchas
 
-- **Minified variable names change between app versions.** Never search for `Sn` / `Ti` / `ZAt` / `A7e` — use the stable byte anchors: flag ID `3885610113` (Layer 1a), and one of the two Layer 1b anchors depending on the asar version: `sonnet-4-6|opus-4-6` (Form A, older) or `["claude-sonnet-4-6","claude-opus-4-6"]` (Form B, newer).
-- **Layer 1b form rotation is its own non-obvious failure mode.** When Anthropic refactored the model gate from regex to array (v1.3109), older patch scripts that only knew the regex anchor would detect `needs_1a` only, half-patch, and fail verification — leaving the asar with Layer 1a applied but Layer 1b untouched. The current preflight refuses to proceed in this case (`unknown` state). When Anthropic refactors the gate again, expect the same failure mode and add a Form C alongside A/B in the preflight + patch-dispatch.
-- **Both Layer 1a and Layer 1b enforce a unique-match check** (exactly one occurrence of the unpatched anchor before replacement). More than one match means the asar layout has changed in a way we don't understand — abort rather than guess.
-- **Entitlements extraction is a hard-fail before backup.** If `codesign -d --entitlements` returns nothing, the script exits before touching anything. Bypass with `ALLOW_PATCH_WITHOUT_ENTITLEMENTS=1` only as a last resort — re-signing without entitlements strips `com.apple.security.virtualization` and Cowork breaks with "Invalid installation."
-- **`codesign --deep` breaks Cowork.** It re-signs inner frameworks, stripping their original Anthropic signatures and the `com.apple.security.virtualization` entitlement. Always sign without `--deep` and with `--entitlements`.
+- **Never search for minified names** (`Sn` / `Ti` / `ZAt` / `A7e`) - they rotate between app versions. Anchor on the flag ID and Layer 1b form strings (see integrity-layers.md).
+- **Layer 1b form rotation is a silent-failure mode.** When the model gate was refactored regex→array in v1.3109, older scripts that only knew the regex anchor detected `needs_1a` only, half-patched, and failed verification. The current preflight refuses to proceed (`unknown`) when Layer 1a's anchor is present but Layer 1b's form is unrecognized. When the gate is refactored again, add a Form C alongside A/B in the preflight + patch-dispatch - don't paper over it.
+- **Both Layer 1a and Layer 1b enforce a unique-match check** (exactly one occurrence of the unpatched anchor). More than one means the asar layout changed in a way we don't understand - abort rather than guess.
+- **Entitlements extraction is a hard-fail before backup.** If `codesign -d --entitlements` returns nothing, exit before touching anything. `ALLOW_PATCH_WITHOUT_ENTITLEMENTS=1` is a last-resort escape hatch - re-signing without entitlements strips `com.apple.security.virtualization` and Cowork breaks with "Invalid installation."
+- **Never use `codesign --deep`.** It re-signs inner frameworks, stripping their original Anthropic signatures and the virtualization entitlement. Sign without `--deep` and with `--entitlements`.
 - **Entitlements must be extracted BEFORE patching.** Once the binary is modified, `codesign -d --entitlements` returns the (now invalid) signature's entitlements.
-- **`@electron/asar` is pinned to `4.2.0`** and installed with `--ignore-scripts` to defend against a future supply-chain landing a postinstall hook. Bump the pin intentionally and re-test — a silent transitive change in the header parser would silently corrupt the patch.
-- **Temp paths use `mktemp` / `mktemp -d`.** Don't introduce predictable `/tmp/...` paths — they're a symlink-attack vector on a multi-user machine.
-- **Auto-updates overwrite the patch.** Users must re-run after each Claude Desktop update.
-- **`ANTHROPIC_DEFAULT_OPUS_MODEL` env var does NOT work** for Cowork — `LocalAgentModeSessionManager` has its own model resolution path that ignores environment overrides.
+- **`@electron/asar` is pinned to `4.2.0`** and installed with `--ignore-scripts` to defend against a future supply-chain postinstall hook. Bump the pin intentionally and re-test - a silent transitive change in the header parser would silently corrupt the patch.
+- **Temp paths use `mktemp` / `mktemp -d`** - never predictable `/tmp/...` paths (symlink-attack vector on a multi-user machine).
+- **`ANTHROPIC_DEFAULT_OPUS_MODEL` does NOT affect Cowork.** `LocalAgentModeSessionManager` has its own model resolution path that ignores environment overrides.
 
 ## Code Style
 
-- Bash with `set -euo pipefail`. Inline Python for binary manipulation (regex on raw bytes), passed via heredoc with positional argv (no bash expansion in Python bodies — heredocs are `<< 'PYEOF'`).
-- Bash gotcha: do **not** wrap `$(python3 ... << 'PYEOF' ... PYEOF)` in outer double quotes (`"$(...)"`). The bash parser miscounts apostrophes inside the heredoc body when the substitution is double-quoted. Use bare `X=$(...)` for assignments — no word-splitting risk on the RHS of an assignment.
-- Conventional commits: `type: description` (e.g., `feat:`, `fix:`, `docs:`).
-- Keep the patch script idempotent — safe to run multiple times.
-
-## Related GitHub Issues
-
-- anthropics/claude-code#37413, #36760, #36351, #33154
+- Bash with `set -euo pipefail`. Inline Python via heredocs with positional argv (`<< 'PYEOF'`, no bash interpolation in the body).
+- **Heredoc gotcha:** do not wrap `$(python3 ... << 'PYEOF' ... PYEOF)` in outer double quotes - bash miscounts apostrophes inside double-quoted heredoc substitutions. Use bare `X=$(...)` assignments (no word-splitting on the RHS of an assignment).
+- Same-length swaps for any new asar mutation - V8 bytecode-cache constraint.
+- Idempotent: the script must be safe to re-run.
+- Conventional commits: `type: description` (`feat:`, `fix:`, `docs:`).
