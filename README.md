@@ -58,8 +58,8 @@ The patch addresses both gates with two same-length JS swaps. The function and v
 | 2026-03-19 19:59:08 | **First broken session** — `model: claude-opus-4-6` (same app version, flag rollback) |
 | 2026-03-31 → 2026-04-06 | 110 consecutive sessions, all without `[1m]` |
 | 2026-04-03 09:08 | Context window exceeded error — confirmed hitting 200K wall |
-| 2026-04-18 20:19:30 | Last working `opus-4-6[1m]` session under v1 patch |
-| 2026-04-18 20:19:53 | **Second regression** — first `opus-4-7` session, no `[1m]`. Same app version (1.569.0), v1 patch still installed. Model allow-list regex doesn't recognize 4-7. |
+| 2026-04-18 20:19:30 | Last working `opus-4-6[1m]` session under flag-bypass-only patch |
+| 2026-04-18 20:19:53 | **Second regression** — first `opus-4-7` session, no `[1m]`. Same app version (1.569.0), flag-bypass patch still installed. Model allow-list regex doesn't recognize 4-7. |
 
 ## How It Works
 

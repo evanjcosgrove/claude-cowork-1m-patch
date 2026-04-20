@@ -30,7 +30,7 @@ No build step, no dependencies to install (script self-installs `@electron/asar`
 - **Two same-length JS swaps** in the model-resolution function `ZAt`. Both must preserve byte length so V8's compiled bytecode cache stays valid.
   - **1a** `!Sn("3885610113")` → `!1/*___________*/` (17 bytes) — neutralizes the server feature flag.
   - **1b** `sonnet-4-6|opus-4-6` → `opus-4-[67](?:)(?:)` (19 bytes) — broadens the model allow-list to cover `opus-4-7` (April 18 regression). `(?:)(?:)` are zero-width non-capturing groups serving as 8 bytes of padding.
-- **Idempotent state detection** by byte anchor: the script greps for `3885610113` and `sonnet-4-6|opus-4-6` independently, applies only the missing layer(s), and exits cleanly when both anchors are absent. v1-patched users get only Layer 1b.
+- **Idempotent state detection** by byte anchor: the script greps for `3885610113` and `sonnet-4-6|opus-4-6` independently, applies only the missing layer(s), and exits cleanly when both anchors are absent. Users with only Layer 1a applied get just the missing Layer 1b update.
 - **Four integrity layers** must be updated in sequence: JS → per-file hash → header hash → code signature. Skipping any one causes launch failure. Layer 1 holds two JS gates; Layers 2–4 are unchanged.
 
 ## Non-obvious Gotchas

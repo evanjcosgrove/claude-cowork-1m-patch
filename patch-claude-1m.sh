@@ -63,8 +63,8 @@ fi
 echo "Using asar module: $ASAR_MODULE"
 
 # --- Determine patch state from byte anchors ---
-# Each layer's "unpatched" anchor is searched independently so users with the
-# v1 patch already applied get only the missing Layer 1b update.
+# Each layer's "unpatched" anchor is searched independently, so re-running the
+# script after a partial patch only applies the missing layer(s).
 HAS_FLAG=0
 HAS_REGEX=0
 grep -q "$FLAG_ID" "$ASAR_PATH" 2>/dev/null && HAS_FLAG=1

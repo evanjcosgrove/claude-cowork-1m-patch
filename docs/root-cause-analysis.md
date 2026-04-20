@@ -60,7 +60,7 @@ Fix: extract entitlements **before** patching, then re-sign with `--entitlements
 
 ## April 18 2026 — Second Gate Discovered
 
-Five weeks after the v1 patch shipped, a fresh log review surfaced a 23-second boundary in `cowork_vm_node.log`:
+Five weeks after the initial flag-bypass patch shipped, a fresh log review surfaced a 23-second boundary in `cowork_vm_node.log`:
 
 | Timestamp | Spawn line |
 |---|---|

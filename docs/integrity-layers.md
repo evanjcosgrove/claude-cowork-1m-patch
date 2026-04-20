@@ -30,7 +30,7 @@ After:  !1/*___________*/       // 17 bytes
 
 ### Bypass 1b — Model allow-list regex
 
-**What:** `!/sonnet-4-6|opus-4-6/i.test(t)` rejects any model name that isn't `sonnet-4-6` or `opus-4-6`. When Anthropic added `claude-opus-4-7` to Cowork on 2026-04-18, this gate started returning `true` for 4-7 sessions, downgrading them to 200K even on a v1-patched binary.
+**What:** `!/sonnet-4-6|opus-4-6/i.test(t)` rejects any model name that isn't `sonnet-4-6` or `opus-4-6`. When Anthropic added `claude-opus-4-7` to Cowork on 2026-04-18, this gate started returning `true` for 4-7 sessions, downgrading them to 200K even on a binary patched only at Gate 1a.
 
 **Bypass:** Same-length swap of the regex body (the literal `sonnet-4-6|opus-4-6` is the byte anchor; the surrounding `/.../i` delimiters are left untouched):
 
