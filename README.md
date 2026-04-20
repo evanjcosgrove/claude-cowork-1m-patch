@@ -94,6 +94,8 @@ cp ~/Desktop/Info.plist.backup-YYYYMMDD-HHMMSS \
 osascript -e 'quit app "Claude"'; sleep 2; open -a Claude
 ```
 
+> If macOS rejects the rolled-back app with "Invalid installation" or a Gatekeeper block (the bundle's outer signature still references the patched files' hashes), the cleanest recovery is to reinstall Claude Desktop from <https://claude.ai/download> — about a minute, and you get a fresh signed copy.
+
 ## The Problem
 
 Feature flag `3885610113` controls whether the Cowork model resolution function appends `[1m]` to model names. On 2026-03-19, the flag was rolled back server-side — same app version, same session setup, different behavior. Log timestamps confirm the boundary: `18:36` `[1m]`, `19:59` no `[1m]`. The CLI was unaffected; only Desktop's `LocalAgentModeSessionManager` was broken.
@@ -112,7 +114,7 @@ function ZAt(t) {
 }
 ```
 
-> *This snippet is from the older asar shape (Claude Desktop ~v1.5xx and earlier). Claude Desktop ≥ v1.31xx replaced the regex with a JS array — same three OR conditions, different syntax. Both forms are handled; see [CHANGELOG.md](CHANGELOG.md) and the patch script's preflight.*
+> *This snippet is from the older asar shape (Claude Desktop < v1.3109). Claude Desktop ≥ v1.3109 replaced the regex with a JS array — same three OR conditions, different syntax. Both forms are handled; see [CHANGELOG.md](CHANGELOG.md) and the patch script's preflight.*
 
 The ternary is a three-condition OR — if **any** is true, the model name is returned unchanged.
 
@@ -121,10 +123,10 @@ The ternary is a three-condition OR — if **any** is true, the model name is re
 
 The patch addresses both gates with two same-length JS swaps. The function and variable names (`ZAt`, `Sn`, `A7e`, `Ti`, …) are minified and rotate between app versions. The flag ID `3885610113` is the stable Layer 1a anchor.
 
-For Layer 1b, Anthropic refactored the gate from a regex to an array `.includes()` check around Claude Desktop v1.31xx. The script knows both byte anchors and detects which is present at runtime:
+For Layer 1b, Anthropic refactored the gate from a regex to an array `.includes()` check around Claude Desktop v1.3109. The script knows both byte anchors and detects which is present at runtime:
 
-- **Form A (regex; older asars, ~v1.5xx and earlier):** anchor `sonnet-4-6|opus-4-6` → `opus-4-[67](?:)(?:)` (19-byte swap).
-- **Form B (array; newer asars, ~v1.31xx+):** anchor `["claude-sonnet-4-6","claude-opus-4-6"]` → `[ "claude-opus-4-6","claude-opus-4-7" ]` (39-byte swap).
+- **Form A (regex; older asars, < v1.3109):** anchor `sonnet-4-6|opus-4-6` → `opus-4-[67](?:)(?:)` (19-byte swap).
+- **Form B (array; newer asars, ≥ v1.3109):** anchor `["claude-sonnet-4-6","claude-opus-4-6"]` → `[ "claude-opus-4-6","claude-opus-4-7" ]` (39-byte swap).
 
 If neither anchor is present in either form, the script refuses to half-patch and exits with `unknown` — meaning Anthropic refactored the gate again and the script needs a Form C.
 

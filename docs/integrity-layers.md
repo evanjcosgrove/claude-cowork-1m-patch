@@ -28,7 +28,11 @@ After:  !1/*___________*/       // 17 bytes
 
 **Result:** Gate 1a always evaluates to `false`. The flag check is neutralized.
 
-### Bypass 1b — Model allow-list regex
+### Bypass 1b — Model allow-list
+
+Anthropic refactored this gate around Claude Desktop v1.3109. The script auto-detects which form the asar uses and dispatches the matching same-length swap; if neither form is recognized, preflight exits `unknown` rather than half-patch.
+
+#### Form A — regex literal (Claude Desktop < v1.3109)
 
 **What:** `!/sonnet-4-6|opus-4-6/i.test(t)` rejects any model name that isn't `sonnet-4-6` or `opus-4-6`. When Anthropic added `claude-opus-4-7` to Cowork on 2026-04-18, this gate started returning `true` for 4-7 sessions, downgrading them to 200K even on a binary patched only at Gate 1a.
 
@@ -42,6 +46,31 @@ After:  opus-4-[67](?:)(?:)     // 19 bytes — matches ONLY opus-4-6, opus-4-7
 `opus-4-[67]` is the productive 11-byte payload; `(?:)(?:)` is two zero-width non-capturing groups serving as 8 bytes of pure padding. The replacement is a valid regex body whose semantics are exactly: "any string containing `opus-4-6` or `opus-4-7`."
 
 **Result:** Gate 1b returns `false` for both `claude-opus-4-6` and `claude-opus-4-7`. The function falls through to `${t}[1m]` and 1M context is requested. `sonnet-4-6` no longer matches — that drop is intentional (see README "Opus-only scope" caveat).
+
+#### Form B — JS array (Claude Desktop ≥ v1.3109)
+
+**What:** Anthropic refactored the regex literal into a JS array used with `.some(t => e.includes(t))` substring matching:
+
+```javascript
+const eyn = ["claude-sonnet-4-6", "claude-opus-4-6"];
+function A7e(t) {
+  return /\[1m\]/i.test(t) || !Ti("3885610113") || !(e0t() ?? eyn).some(s => t.includes(s))
+    ? t : `${t}[1m]`
+}
+```
+
+`e0t()` reads a server-pushed allow-list (from `pB().supports1mContext`); when the server hasn't delivered one — the dominant case at session-construction time — `??` falls through to the local `eyn` array. The patch swaps the local array.
+
+**Bypass:** Same-length swap of the array literal:
+
+```
+Before: ["claude-sonnet-4-6","claude-opus-4-6"]   // 39 bytes
+After:  [ "claude-opus-4-6","claude-opus-4-7" ]   // 39 bytes
+```
+
+Whitespace inside the brackets pads the byte budget; `claude-sonnet-4-6` is intentionally dropped (per the "Opus-only scope" caveat) and `claude-opus-4-7` is added so the next regression doesn't require another script update.
+
+**Result:** `.includes()` matches `claude-opus-4-6` and `claude-opus-4-7`. The function falls through to `${t}[1m]` and 1M context is requested.
 
 ### Why same-length is non-negotiable
 

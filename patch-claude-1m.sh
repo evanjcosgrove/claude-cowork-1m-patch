@@ -9,9 +9,9 @@ set -euo pipefail
 #
 # Layer 1b has TWO known forms across Claude Desktop versions. The preflight
 # detects which form the asar uses and applies the matching same-length swap:
-#   Form A (regex; older asars, ~v1.5xx and earlier):
+#   Form A (regex; older asars, < v1.3109):
 #     /sonnet-4-6|opus-4-6/i.test(e) → /opus-4-[67](?:)(?:)/i.test(e)
-#   Form B (array .includes; newer asars, ~v1.31xx+):
+#   Form B (array .includes; newer asars, ≥ v1.3109):
 #     ["claude-sonnet-4-6","claude-opus-4-6"] → [ "claude-opus-4-6","claude-opus-4-7" ]
 #     (substring match against e via .some(t => e.includes(t)) — sonnet
 #     intentionally dropped per the "Opus-only scope" caveat in README.)
@@ -200,8 +200,8 @@ for p in flag_patterns:
     flag_matches.extend(re.findall(p, data))
 
 # Layer 1b — TWO known forms. Same anchors as the Layer 1b patch blocks below.
-# Form A (regex): older asars (~v1.5xx and earlier).
-# Form B (array): newer asars (~v1.31xx+) that swapped the regex literal for
+# Form A (regex): older asars (< v1.3109).
+# Form B (array): newer asars (≥ v1.3109) that swapped the regex literal for
 #                 a JS array used with .some(t => e.includes(t)).
 regex_anchor = b'sonnet-4-6|opus-4-6'
 array_anchor = b'["claude-sonnet-4-6","claude-opus-4-6"]'
@@ -429,10 +429,10 @@ form = sys.argv[2]
 # Both forms broaden the allow-list to cover opus-4-6 AND opus-4-7,
 # intentionally dropping sonnet-4-6 (see README "Opus-only scope" caveat).
 if form == 'regex':
-    old = b'sonnet-4-6|opus-4-6'   # 19 bytes — older asars (~v1.5xx)
+    old = b'sonnet-4-6|opus-4-6'   # 19 bytes — older asars (< v1.3109)
     new = b'opus-4-[67](?:)(?:)'   # 19 bytes — same-length swap
 elif form == 'array':
-    old = b'["claude-sonnet-4-6","claude-opus-4-6"]'   # 39 bytes — newer asars (~v1.31xx+)
+    old = b'["claude-sonnet-4-6","claude-opus-4-6"]'   # 39 bytes — newer asars (≥ v1.3109)
     new = b'[ "claude-opus-4-6","claude-opus-4-7" ]'   # 39 bytes — same-length swap
 else:
     print(f"ERROR: unknown Layer 1b form: {form}")

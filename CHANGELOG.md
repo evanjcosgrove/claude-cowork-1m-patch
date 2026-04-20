@@ -8,7 +8,7 @@ Each entry tracks a specific Claude Desktop change that required (or was unlocke
 
 - **Added:** Layer 1b form-detection (regex vs array vs none). The preflight now dispatches the matching same-length swap, and refuses to half-patch when neither form is recognized.
 - **Why:** Claude Desktop **v1.3109.0** (released 2026-04-16) refactored the model-allow-list gate from a regex literal (`/sonnet-4-6|opus-4-6/i`) to a JS array (`["claude-sonnet-4-6","claude-opus-4-6"]`) used with `.some(t => e.includes(t))`. The old anchor was absent in the new asar; the prior script's preflight half-patched and verification failed, leaving the asar with Layer 1a applied and Layer 1b untouched.
-- **Action required:** Re-run `./patch-claude-1m.sh` if you're on Claude Desktop ≥ v1.31xx. Older asars are unaffected — the script auto-detects which form your asar uses.
+- **Action required:** Re-run `./patch-claude-1m.sh` if you're on Claude Desktop ≥ v1.3109. Older asars are unaffected — the script auto-detects which form your asar uses.
 - **Reference:** [docs/root-cause-analysis.md § April 19–20 2026 — Form B Discovered](docs/root-cause-analysis.md)
 
 ## 2026-04-18
@@ -16,7 +16,7 @@ Each entry tracks a specific Claude Desktop change that required (or was unlocke
 - **Added:** Layer 1b — model allow-list broadened to also cover `claude-opus-4-7`.
 - **Why:** Anthropic shipped `claude-opus-4-7` to Cowork. Layer 1a (server flag bypass) alone was not enough — the model-allow-list regex `/sonnet-4-6|opus-4-6/i` rejected 4-7 sessions, so `[1m]` was never appended. Same-length swap of the regex body to `opus-4-[67](?:)(?:)`. `sonnet-4-6` intentionally dropped (see "Opus-only scope" caveat in [README.md](README.md)).
 - **Action required:** Re-run `./patch-claude-1m.sh`.
-- **Reference:** [docs/root-cause-analysis.md § April 18 2026 — Second Gate Discovered](docs/root-cause-analysis.md#april-18-2026--second-gate-discovered)
+- **Reference:** [docs/root-cause-analysis.md § April 18 2026 — Second Gate Discovered](docs/root-cause-analysis.md)
 
 ## 2026-03-19
 
