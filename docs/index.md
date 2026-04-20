@@ -3,7 +3,7 @@ layout: page
 title: Restoring 1M context in Claude Desktop's Cowork mode
 ---
 
-*Code: [github.com/evanjcosgrove/claude-cowork-1m-patch](https://github.com/evanjcosgrove/claude-cowork-1m-patch)*
+<p align="center" markdown="1">*Code: [github.com/evanjcosgrove/claude-cowork-1m-patch](https://github.com/evanjcosgrove/claude-cowork-1m-patch)*</p>
 
 Two Cowork sessions, ninety minutes apart, same Claude Desktop install. The 18:36 session had a 1M-token context window. The 19:59 session had 200K. Nothing on my end had changed.
 
@@ -123,7 +123,11 @@ The fix had to happen in a specific order. Extract Anthropic's entitlements **be
 
 It worked.
 
-![Claude Desktop v1.3109.0 showing claude-opus-4-7[1m] with 55.2k / 1m tokens in the /context view](img/verification.png)
+<p align="center">
+  <img src="img/verification.png"
+       alt="Claude Desktop v1.3109.0 showing claude-opus-4-7[1m] with 55.2k / 1m tokens in the /context view"
+       style="max-width: 100%;">
+</p>
 
 Same Cowork session, next spawn after the patch, and the `[1m]` suffix came back. `/context` confirmed it: model resolution was quietly appending the suffix again.
 
@@ -139,6 +143,14 @@ Three things from this:
 
 *Second postscript (April 20, 2026):* Claude Desktop v1.3109.0 refactored the model gate again — same three OR conditions, but the regex literal got swapped for a JS array used with `.some(t => e.includes(t))`. Same flag ID, same `[1m]` template, same V8 bytecode-cache constraint. The patch picked up a Layer 1b form-detector (regex vs array vs neither) and now applies the matching 39-byte same-length swap (`["claude-sonnet-4-6","claude-opus-4-6"]` → `[ "claude-opus-4-6","claude-opus-4-7" ]`); when neither form is recognized, preflight refuses to half-patch. The byte-anchor approach holds for now. See [CHANGELOG.md](https://github.com/evanjcosgrove/claude-cowork-1m-patch/blob/main/CHANGELOG.md) for the running iteration log.
 
+## Further Reading
+
+- [README](https://github.com/evanjcosgrove/claude-cowork-1m-patch/blob/main/README.md) - install, scope, compatibility, rollback
+- [CHANGELOG](https://github.com/evanjcosgrove/claude-cowork-1m-patch/blob/main/CHANGELOG.md) - what changed when, by Claude Desktop version
+- [docs/integrity-layers.md](https://github.com/evanjcosgrove/claude-cowork-1m-patch/blob/main/docs/integrity-layers.md) - the four integrity layers in detail
+- [docs/root-cause-analysis.md](https://github.com/evanjcosgrove/claude-cowork-1m-patch/blob/main/docs/root-cause-analysis.md) - how the flag was found, why extract/repack fails
+- [Discussions](https://github.com/evanjcosgrove/claude-cowork-1m-patch/discussions) - Q&A, version-compat chatter, bug-report template
+
 ---
 
-*Code: [github.com/evanjcosgrove/claude-cowork-1m-patch](https://github.com/evanjcosgrove/claude-cowork-1m-patch) · [@evanjcosgrove](https://x.com/evanjcosgrove) · [LinkedIn](https://linkedin.com/in/evanjcosgrove) · [Mastodon](https://cosocial.ca/@evanjcosgrove)*
+<p align="center" markdown="1">*Code: [github.com/evanjcosgrove/claude-cowork-1m-patch](https://github.com/evanjcosgrove/claude-cowork-1m-patch) · [LinkedIn](https://linkedin.com/in/evanjcosgrove) · [Instagram](https://www.instagram.com/evanjcosgrove/) · [@evanjcosgrove](https://x.com/evanjcosgrove)*</p>
