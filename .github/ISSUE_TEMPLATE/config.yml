@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Q&A — usage questions, "did this work for you?"
+    url: https://github.com/evanjcosgrove/claude-cowork-1m-patch/discussions/categories/q-a
+    about: For "does this work on version X?", "how do I roll back?", or general usage questions, please open a Q&A discussion instead of an issue.
+  - name: Welcome post — read this before posting
+    url: https://github.com/evanjcosgrove/claude-cowork-1m-patch/discussions/1
+    about: Project scope, where to post what, and the bug-report checklist.
