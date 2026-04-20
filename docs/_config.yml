@@ -1,5 +1,5 @@
 theme: minima
-title: Restoring 1M context in Claude Desktop's Cowork mode
+title: claude-cowork-1m-patch
 description: How a server-side feature flag rollback silently downgraded Claude Desktop's Cowork mode from 1M to 200K context, and what it took to put it back — including the four-layer integrity wall and two same-length JS swaps.
 markdown: kramdown
 exclude:

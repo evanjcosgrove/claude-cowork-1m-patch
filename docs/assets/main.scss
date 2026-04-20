@@ -86,4 +86,61 @@
     cursor: pointer;
   }
   details > summary:hover { color: #58a6ff; }
+
+  // Dark-mode harmony for the .writeup overrides below.
+  .writeup-tagline         { color: #8b949e; }
+  .writeup-content h2      { border-top-color: #30363d; }
+  .writeup-content details { border-color: #30363d; background: #161b22; }
+}
+
+// ---- Writeup typography (applies to the overridden `page` layout) ----
+// Scoped under `.writeup` so nothing here leaks into other Minima pages.
+.writeup {
+  max-width: 42rem;          // ~672px; comfortable reading measure (~70ch)
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+}
+
+.writeup-title {
+  font-size: 2.25rem;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.5rem;
+}
+
+.writeup-tagline {
+  font-size: 1.05rem;
+  color: #6a737d;
+  margin: 0 0 2.5rem;
+}
+
+.writeup-content {
+  font-size: 1.0625rem;      // ~17px
+  line-height: 1.7;
+}
+
+.writeup-content > p { margin: 0 0 1.25rem; }
+
+.writeup-content h2 {
+  margin-top: 3rem;
+  margin-bottom: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #eaecef;
+  font-size: 1.5rem;
+}
+
+.writeup-content h3 {
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  font-size: 1.2rem;
+}
+
+.writeup-content img { display: block; margin: 1.5rem auto; }
+
+.writeup-content details {
+  margin: 1.5rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid #eaecef;
+  border-radius: 6px;
+  background: #f6f8fa;
 }

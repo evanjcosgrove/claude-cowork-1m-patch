@@ -1,0 +1,12 @@
+---
+layout: default
+---
+<article class="post writeup">
+  <h1 class="writeup-title">{{ page.title | escape }}</h1>
+  {%- if page.tagline -%}
+    <p class="writeup-tagline">{{ page.tagline }}</p>
+  {%- endif -%}
+  <div class="post-content writeup-content">
+    {{ content }}
+  </div>
+</article>
