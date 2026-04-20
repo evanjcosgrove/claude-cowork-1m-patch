@@ -18,7 +18,7 @@ Cowork is Claude Desktop's local-agent mode - a sandboxed VM that runs Claude wi
 <details style="margin: 1rem 0 2rem;">
   <summary><strong>Show the Anthropic Support thread</strong></summary>
   <p style="margin-top: 1rem;">
-    <img src="../img/support-thread.png"
+    <img src="img/support-thread.png"
          alt="Anthropic Support email thread acknowledging the 1M context regression and stating the issue should be resolved"
          style="max-width: 100%;">
   </p>
@@ -123,7 +123,7 @@ The fix had to happen in a specific order. Extract Anthropic's entitlements **be
 
 It worked.
 
-![Claude Desktop v1.3109.0 showing claude-opus-4-7[1m] with 55.2k / 1m tokens in the /context view](../img/verification.png)
+![Claude Desktop v1.3109.0 showing claude-opus-4-7[1m] with 55.2k / 1m tokens in the /context view](img/verification.png)
 
 Same Cowork session, next spawn after the patch, and the `[1m]` suffix came back. `/context` confirmed it: model resolution was quietly appending the suffix again.
 
