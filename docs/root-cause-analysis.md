@@ -83,3 +83,23 @@ Layer 1a was correctly neutralized (`!1/*___________*/` evaluates to `false`). B
 The fix is the same shape as Layer 1a: a same-length swap of the regex body. `sonnet-4-6|opus-4-6` is 19 bytes; `opus-4-[67](?:)(?:)` is 19 bytes and matches `opus-4-6` and `opus-4-7` only — the two `(?:)` empty non-capturing groups are zero-width padding that round out the byte budget without affecting matching semantics.
 
 The original four-layer integrity model is unchanged. Layer 1 just turned out to have two same-length JS gates instead of one. Same V8 bytecode cache constraint, same per-file/header SHA256 recomputation, same re-sign — Layer 1b is a 15-line addition to the existing patch script.
+
+## April 19–20 2026 — Form B Discovered (regex → array refactor)
+
+A user upgraded to Claude Desktop **v1.3109.0** (released 2026-04-16) and ran the patch. Layer 1a applied cleanly (`!Ti("3885610113")` — variable name rotated from `Sn` to `Ti`, flag ID unchanged), but Layer 1b's anchor `sonnet-4-6|opus-4-6` returned zero matches. The preflight misclassified this as `needs_1a` only and let the patch run; verification then failed because Layer 1b's patched marker (`opus-4-[67](?:)(?:)`) couldn't appear in an asar that no longer contains a regex literal there.
+
+Inspecting the live model-resolution function in the new asar:
+
+```javascript
+const eyn = ["claude-sonnet-4-6", "claude-opus-4-6"];
+function A7e(t) {
+  return /\[1m\]/i.test(t) || !Ti("3885610113") || !(e0t() ?? eyn).some(s => t.includes(s))
+    ? t : `${t}[1m]`
+}
+```
+
+Same three OR conditions, same flag ID, same `[1m]` template — but the model allow-list is no longer a regex literal. It's a JS array (`eyn`) used with `.some(t => e.includes(t))`, which performs substring matching against the model name. `e0t()` reads a server-pushed allow-list (from `pB().supports1mContext`) and falls back to `eyn` via `??` when the server hasn't delivered one — which is the dominant code path because `A7e` runs synchronously during session construction, before the IPC config arrives.
+
+Same-length swap of the array literal: `["claude-sonnet-4-6","claude-opus-4-6"]` (39 bytes) → `[ "claude-opus-4-6","claude-opus-4-7" ]` (39 bytes). Whitespace inside the brackets pads the byte budget; sonnet is intentionally dropped (per the "Opus-only scope" caveat in README), and `claude-opus-4-7` is added so the next regression doesn't require another script update.
+
+The script now carries both Layer 1b anchors (regex and array) and detects which form the asar uses at preflight time, dispatching the matching same-length swap. If neither form is recognized in either patched or unpatched state, preflight refuses to proceed (`unknown` state) instead of half-patching — that was the failure mode the v1.3109.0 user hit. The four-layer integrity model is still unchanged; this is purely a Layer 1b form-detection layer added on top of the existing patch flow.

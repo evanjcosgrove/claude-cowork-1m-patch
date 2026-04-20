@@ -40,6 +40,8 @@ function ZAt(t) {
 }
 ```
 
+> *This snippet is from the older asar shape (Claude Desktop ~v1.5xx and earlier). Claude Desktop ≥ v1.31xx replaced the regex with a JS array — same three OR conditions, different syntax. Both forms are handled; see [CHANGELOG.md](CHANGELOG.md) and the patch script's preflight.*
+
 The ternary is a three-condition OR — if **any** is true, the model name is returned unchanged.
 
 - **Gate A — Server feature flag.** `Sn("3885610113")` checks a server-side flag. When **off** (current state since 2026-03-19), `!Sn(...)` evaluates to `true`, the ternary short-circuits, and `[1m]` is never appended. You get 200K regardless of your plan.
@@ -66,6 +68,7 @@ If neither anchor is present in either form, the script refuses to half-patch an
 | 2026-04-03 09:08        | Context window exceeded error — confirmed hitting 200K wall                                                                                                               |
 | 2026-04-18 20:19:30     | Last working `opus-4-6[1m]` session under flag-bypass-only patch                                                                                                          |
 | 2026-04-18 20:19:53     | **Second regression** — first `opus-4-7` session, no `[1m]`. Same app version (1.569.0), flag-bypass patch still installed. Model allow-list regex doesn't recognize 4-7. |
+| 2026-04-19 → 04-20      | **v1.3109.0 refactor discovered** — Anthropic replaced the regex gate with a JS array (`["claude-sonnet-4-6","claude-opus-4-6"]` used with `.some(t => e.includes(t))`). The script's regex anchor was absent in the new asar; preflight half-patched and verification failed. Added Form B (array) detection + matching same-length swap. See [CHANGELOG.md](CHANGELOG.md). |
 
 
 ## How It Works
