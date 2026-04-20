@@ -3,10 +3,43 @@ layout: default
 ---
 <article class="post writeup">
   <h1 class="writeup-title">{{ page.title | escape }}</h1>
-  {%- if page.tagline -%}
-    <p class="writeup-tagline">{{ page.tagline }}</p>
-  {%- endif -%}
+
+  <div class="writeup-badges" role="list">
+    <span class="badge" role="listitem">platform <span class="badge-val">macOS</span></span>
+    <span class="badge" role="listitem">tested <span class="badge-val">v1.3109</span></span>
+    <a class="badge" role="listitem" href="https://github.com/evanjcosgrove/claude-cowork-1m-patch/stargazers" target="_blank" rel="noopener">
+      <svg class="badge-icon" viewBox="0 0 16 16" width="11" height="11" fill="currentColor" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>
+      <span class="badge-val" id="gh-stars">&mdash;</span> stars
+    </a>
+    <span class="badge" role="listitem">read <span class="badge-val">&asymp; 12 min</span></span>
+  </div>
+
+  <hr class="writeup-divider">
+
+  <nav class="writeup-toc" aria-label="Chapters">
+    <a href="#the-regression">the regression</a>
+    <span class="toc-sep" aria-hidden="true">/</span>
+    <a href="#inside-the-binary">inside the binary</a>
+    <span class="toc-sep" aria-hidden="true">/</span>
+    <a href="#the-same-length-swap">the same-length swap</a>
+    <span class="toc-sep" aria-hidden="true">/</span>
+    <a href="#the-four-layer-integrity-wall">four-layer integrity wall</a>
+    <span class="toc-sep" aria-hidden="true">/</span>
+    <a href="#what-i-learned">what I learned</a>
+  </nav>
+
   <div class="post-content writeup-content">
     {{ content }}
   </div>
 </article>
+
+<script>
+  (function () {
+    var el = document.getElementById('gh-stars');
+    if (!el) return;
+    fetch('https://api.github.com/repos/evanjcosgrove/claude-cowork-1m-patch', { headers: { 'Accept': 'application/vnd.github+json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d && typeof d.stargazers_count === 'number') el.textContent = d.stargazers_count; })
+      .catch(function () { /* keep placeholder */ });
+  })();
+</script>

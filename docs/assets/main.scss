@@ -72,13 +72,19 @@ a:hover {
 }
 
 // ============================================================================
-// Site header — brand-only (nav is suppressed via header_pages: []).
+// Site header — brand left, github icon right (flex layout).
 // ============================================================================
 
 .site-header {
   background-color: $bg-light;
   border-top: none;
   border-bottom: 1px solid $rule-light;
+}
+.writeup-header-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
 }
 
 .site-title,
@@ -90,6 +96,13 @@ a:hover {
   color: $fg-light !important;
   text-decoration: none;
 }
+
+.writeup-gh {
+  display: inline-flex;
+  color: $fg-light-muted;
+  transition: color 140ms ease, transform 140ms ease;
+}
+.writeup-gh:hover { color: $fg-light; transform: translateY(-1px); }
 
 // ============================================================================
 // Writeup layout — the overridden `page` layout in _layouts/page.html.
@@ -103,13 +116,15 @@ a:hover {
 }
 
 .writeup-title {
-  font-family: $serif;
-  font-weight: 600;
-  font-size: 2rem;
-  line-height: 1.1;
-  letter-spacing: -0.015em;
-  margin: 0 0 0.75rem;
+  font-family: $mono;
+  font-weight: 700;
+  font-size: 1.9rem;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  text-align: center;
+  margin: 0 0 1.5rem;
   text-wrap: balance;
+  color: $fg-light;
 }
 
 .writeup-tagline {
@@ -117,8 +132,64 @@ a:hover {
   font-style: italic;
   font-size: 1.0625rem;
   color: $fg-light-muted;
-  margin: 0 0 2.5rem;
+  text-align: center;
+  margin: 0 0 2rem;
 }
+
+// ---- Badges row ----
+.writeup-badges {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0 0 1.75rem;
+}
+.badge {
+  font-family: $mono;
+  font-size: 0.72rem;
+  color: $fg-light-muted;
+  background: transparent;
+  border: 1px solid $rule-light;
+  border-radius: 3px;
+  padding: 0.28rem 0.55rem;
+  letter-spacing: 0.03em;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+.badge:hover { color: $fg-light; border-color: $fg-light-muted; }
+.badge .badge-val { color: $fg-light; }
+.badge-icon { color: $accent-light; flex: none; }
+
+// ---- Lede divider between badges and TOC ----
+.writeup-divider {
+  border: 0;
+  height: 1px;
+  width: 3rem;
+  margin: 0 auto 1.5rem;
+  background: $rule-light;
+}
+
+// ---- Inline table-of-contents ----
+.writeup-toc {
+  text-align: center;
+  font-family: $mono;
+  font-size: 0.78rem;
+  color: $fg-light-muted;
+  letter-spacing: 0.03em;
+  line-height: 2;
+  margin: 0 0 3rem;
+}
+.writeup-toc a {
+  color: $fg-light-muted;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+.writeup-toc a:hover { color: $accent-light; border-bottom-color: rgba($accent-light, 0.4); }
+.writeup-toc .toc-sep { margin: 0 0.4em; color: $rule-light; }
 
 .writeup-content {
   font-size: 1.0625rem;       // ~17px
@@ -142,6 +213,7 @@ a:hover {
 
 // Section headers — quiet top border, generous space above, tight below.
 .writeup-content h2 {
+  position: relative;
   margin: 3.25rem 0 1rem;
   padding-top: 1.75rem;
   border-top: 1px solid $rule-light;
@@ -150,7 +222,25 @@ a:hover {
   font-size: 1.375rem;
   line-height: 1.2;
   letter-spacing: -0.005em;
+  scroll-margin-top: 4rem;
 }
+
+// Hover-reveal anchor icon. Does not shift layout because it's positioned
+// inline with zero-width-space margin when hidden.
+.writeup-content h2 .h-anchor {
+  opacity: 0;
+  margin-left: 0.4em;
+  color: $fg-light-muted;
+  text-decoration: none;
+  font-family: $mono;
+  font-weight: 400;
+  font-size: 0.78em;
+  vertical-align: middle;
+  transition: opacity 160ms ease, color 160ms ease;
+}
+.writeup-content h2:hover .h-anchor,
+.writeup-content h2:focus-within .h-anchor { opacity: 1; }
+.writeup-content h2 .h-anchor:hover { color: $accent-light; }
 
 .writeup-content h3 {
   margin: 2rem 0 0.6rem;
@@ -421,4 +511,27 @@ a:hover {
   .writeup-footer-links a          { color: $fg-dark-muted; }
   .writeup-footer-links a:hover    { color: $accent-dark; border-bottom-color: rgba($accent-dark, 0.4); }
   .writeup-footer-sep              { color: $rule-dark; }
+
+  // Header icon
+  .writeup-gh                      { color: $fg-dark-muted; }
+  .writeup-gh:hover                { color: $fg-dark; }
+
+  // Badges
+  .badge                           { border-color: $rule-dark; color: $fg-dark-muted; }
+  .badge:hover                     { color: $fg-dark; border-color: $fg-dark-muted; }
+  .badge .badge-val                { color: $fg-dark; }
+  .badge-icon                      { color: $accent-dark; }
+
+  // Lede divider
+  .writeup-divider                 { background: $rule-dark; }
+
+  // TOC
+  .writeup-toc                     { color: $fg-dark-muted; }
+  .writeup-toc a                   { color: $fg-dark-muted; }
+  .writeup-toc a:hover             { color: $accent-dark; border-bottom-color: rgba($accent-dark, 0.4); }
+  .writeup-toc .toc-sep            { color: $rule-dark; }
+
+  // h2 anchor icon
+  .writeup-content h2 .h-anchor         { color: $fg-dark-muted; }
+  .writeup-content h2 .h-anchor:hover   { color: $accent-dark; }
 }

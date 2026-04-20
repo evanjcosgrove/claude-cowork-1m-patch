@@ -5,6 +5,9 @@ title: Restoring 1M context in Claude Desktop's Cowork mode
 
 <p align="center" markdown="1">*Code: [github.com/evanjcosgrove/claude-cowork-1m-patch](https://github.com/evanjcosgrove/claude-cowork-1m-patch)*</p>
 
+## The regression <a href="#the-regression" class="h-anchor" aria-hidden="true">#</a>
+{: #the-regression}
+
 Two Cowork sessions, ninety minutes apart, same Claude Desktop install. The 18:36 session had a 1M-token context window. The 19:59 session had 200K. Nothing on my end had changed.
 
 I checked the logs. The earlier session's spawn line ended in `--model claude-opus-4-6[1m]`. The later one ended in `--model claude-opus-4-6` - same model name, no `[1m]` suffix. Same app version (1.569.0). Same Max plan. Same device, same everything.
@@ -32,6 +35,9 @@ That ruled out the easy fixes. Whatever was deciding the model identifier in Cow
 
 That meant looking at the binary.
 
+## Inside the binary <a href="#inside-the-binary" class="h-anchor" aria-hidden="true">#</a>
+{: #inside-the-binary}
+
 I extracted the asar with `npx @electron/asar extract /Applications/Claude.app/Contents/Resources/app.asar /tmp/claude-extracted`. The minified renderer code lives in `.vite/build/index.js` - about 11 MB of JavaScript with everything mangled to single and double-letter names.
 
 I started by grepping for `[1m]`, the suffix that was supposed to get appended. Found it inside one function:
@@ -50,6 +56,9 @@ Walking through them: the first condition skips anything that already has `[1m]`
 The middle condition was the regression. When the flag was on, `!Sn(...)` evaluated to `false` and the function fell through to the suffix. When the flag was off, `!Sn(...)` evaluated to `true` and the suffix was never appended. The flag had been on as of 18:36 on March 19, off as of 19:59. Same binary, different server state.
 
 The function name `ZAt` is minified - it changes between Claude Desktop builds. The flag ID `3885610113` is the only stable string in the area. Any patch had to anchor on the flag ID, not the function name.
+
+## The same-length swap <a href="#the-same-length-swap" class="h-anchor" aria-hidden="true">#</a>
+{: #the-same-length-swap}
 
 The obvious thing to try first was: extract the asar, edit the JavaScript, repack. I'd already extracted, so I just modified the function - replaced the `Sn("...")` call with `false` - and ran `npx @electron/asar pack /tmp/claude-extracted /tmp/app.asar.patched`.
 
@@ -86,6 +95,9 @@ Two bytes for `!1`, four bytes for the comment delimiters, eleven underscores in
 The substitution itself is a raw byte replacement - no JavaScript parsing involved, no AST manipulation, just `read → str_replace → write` against the asar file. The Python that does it asserts the new payload is exactly the same length as the old one before writing, and asserts the unique-occurrence count of the anchor (one match, no more) before replacing. If either invariant fails, the script aborts before touching the binary.
 
 The same trick generalizes: find a stable byte anchor for the flag identifier, swap the surrounding expression for a same-length literal that evaluates to the value you want, leave everything else alone.
+
+## The four-layer integrity wall <a href="#the-four-layer-integrity-wall" class="h-anchor" aria-hidden="true">#</a>
+{: #the-four-layer-integrity-wall}
 
 After the same-length swap, I copied the patched asar into place and launched. Got an immediate error in the Console:
 
@@ -132,6 +144,9 @@ It worked.
 Same Cowork session, next spawn after the patch, and the `[1m]` suffix came back. `/context` confirmed it: model resolution was quietly appending the suffix again.
 
 I packaged the work into [a single bash script](https://github.com/evanjcosgrove/claude-cowork-1m-patch/blob/main/patch-claude-1m.sh) that handles the whole sequence - extract entitlements, back up, byte-swap the JavaScript, recompute the per-file and header hashes, re-sign with the preserved entitlements. The same session has continued without interruption since. I've been using it for about a month before deciding to write any of this up, hoping that Anthropic would fix the regression before I had to.
+
+## What I learned <a href="#what-i-learned" class="h-anchor" aria-hidden="true">#</a>
+{: #what-i-learned}
 
 Three things from this:
 
