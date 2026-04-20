@@ -4,7 +4,7 @@ Four distinct integrity mechanisms protect the app. All four must be addressed f
 
 ---
 
-## Layer 1 — Application Logic (Two JS Gates)
+## Layer 1 - Application Logic (Two JS Gates)
 
 The model-resolution function `ZAt` contains a three-condition OR ternary. Two of the three conditions act as gates that block the `[1m]` suffix from being appended. Both must be neutralized.
 
@@ -15,7 +15,7 @@ function ZAt(t) {
 }
 ```
 
-### Bypass 1a — Server feature flag
+### Bypass 1a - Server feature flag
 
 **What:** `!Sn("3885610113")` performs a server-side feature flag check at runtime. When the flag is off, this evaluates to `true` and short-circuits the ternary.
 
@@ -28,26 +28,26 @@ After:  !1/*___________*/       // 17 bytes
 
 **Result:** Gate 1a always evaluates to `false`. The flag check is neutralized.
 
-### Bypass 1b — Model allow-list
+### Bypass 1b - Model allow-list
 
 Anthropic refactored this gate around Claude Desktop v1.3109. The script auto-detects which form the asar uses and dispatches the matching same-length swap; if neither form is recognized, preflight exits `unknown` rather than half-patch.
 
-#### Form A — regex literal (Claude Desktop < v1.3109)
+#### Form A - regex literal (Claude Desktop < v1.3109)
 
 **What:** `!/sonnet-4-6|opus-4-6/i.test(t)` rejects any model name that isn't `sonnet-4-6` or `opus-4-6`. When Anthropic added `claude-opus-4-7` to Cowork on 2026-04-18, this gate started returning `true` for 4-7 sessions, downgrading them to 200K even on a binary patched only at Gate 1a.
 
 **Bypass:** Same-length swap of the regex body (the literal `sonnet-4-6|opus-4-6` is the byte anchor; the surrounding `/.../i` delimiters are left untouched):
 
 ```
-Before: sonnet-4-6|opus-4-6     // 19 bytes — matches sonnet-4-6, opus-4-6
-After:  opus-4-[67](?:)(?:)     // 19 bytes — matches ONLY opus-4-6, opus-4-7
+Before: sonnet-4-6|opus-4-6     // 19 bytes - matches sonnet-4-6, opus-4-6
+After:  opus-4-[67](?:)(?:)     // 19 bytes - matches ONLY opus-4-6, opus-4-7
 ```
 
 `opus-4-[67]` is the productive 11-byte payload; `(?:)(?:)` is two zero-width non-capturing groups serving as 8 bytes of pure padding. The replacement is a valid regex body whose semantics are exactly: "any string containing `opus-4-6` or `opus-4-7`."
 
-**Result:** Gate 1b returns `false` for both `claude-opus-4-6` and `claude-opus-4-7`. The function falls through to `${t}[1m]` and 1M context is requested. `sonnet-4-6` no longer matches — that drop is intentional (see README "Opus-only scope" caveat).
+**Result:** Gate 1b returns `false` for both `claude-opus-4-6` and `claude-opus-4-7`. The function falls through to `${t}[1m]` and 1M context is requested. `sonnet-4-6` no longer matches - that drop is intentional (see README "Opus-only scope" caveat).
 
-#### Form B — JS array (Claude Desktop ≥ v1.3109)
+#### Form B - JS array (Claude Desktop ≥ v1.3109)
 
 **What:** Anthropic refactored the regex literal into a JS array used with `.some(t => e.includes(t))` substring matching:
 
@@ -59,7 +59,7 @@ function A7e(t) {
 }
 ```
 
-`e0t()` reads a server-pushed allow-list (from `pB().supports1mContext`); when the server hasn't delivered one — the dominant case at session-construction time — `??` falls through to the local `eyn` array. The patch swaps the local array.
+`e0t()` reads a server-pushed allow-list (from `pB().supports1mContext`); when the server hasn't delivered one - the dominant case at session-construction time - `??` falls through to the local `eyn` array. The patch swaps the local array.
 
 **Bypass:** Same-length swap of the array literal:
 
@@ -78,7 +78,7 @@ V8 caches compiled JS bytecode against the asar's file offsets. Any change to by
 
 ---
 
-## Layer 2 — File Integrity (Per-file SHA256 in ASAR Header)
+## Layer 2 - File Integrity (Per-file SHA256 in ASAR Header)
 
 **What:** Each file in the asar has a SHA256 hash and per-4MB-block hashes stored in the asar's JSON header.
 
@@ -95,11 +95,11 @@ V8 caches compiled JS bytecode against the asar's file offsets. Any change to by
 
 **Bypass:** Compute the new SHA256 of the patched file using `@electron/asar`'s `extractFile` + `crypto.createHash`. Replace the old 64-hex-char hash with the new 64-hex-char hash (same length, in-place in the header).
 
-**Prior art:** CVE-2024-46992 (ASAR integrity bypass via header manipulation — Electron's advisory scopes the vulnerability to Windows under specific fuse configurations; cited here for the same general integrity-layer pattern, not as a claim that Claude Desktop on macOS was affected by that specific CVE); CVE-2025-55305 (ASAR integrity bypass via V8 heap snapshot resource modification, affecting Signal, 1Password, Slack); Karol Mazurek's "Cracking Electron Integrity."
+**Prior art:** CVE-2024-46992 (ASAR integrity bypass via header manipulation - Electron's advisory scopes the vulnerability to Windows under specific fuse configurations; cited here for the same general integrity-layer pattern, not as a claim that Claude Desktop on macOS was affected by that specific CVE); CVE-2025-55305 (ASAR integrity bypass via V8 heap snapshot resource modification, affecting Signal, 1Password, Slack); Karol Mazurek's "Cracking Electron Integrity."
 
 ---
 
-## Layer 3 — Archive Integrity (Header SHA256 in Info.plist)
+## Layer 3 - Archive Integrity (Header SHA256 in Info.plist)
 
 **What:** `ElectronAsarIntegrity` in `Info.plist` stores the SHA256 of the raw asar header string.
 
@@ -124,7 +124,7 @@ V8 caches compiled JS bytecode against the asar's file offsets. Any change to by
 
 ---
 
-## Layer 4 — Platform Integrity (macOS Code Signature + Entitlements)
+## Layer 4 - Platform Integrity (macOS Code Signature + Entitlements)
 
 **What:** macOS code signature with the `com.apple.security.virtualization` entitlement, required for Cowork's VM sandbox (`@ant/claude-swift`).
 

@@ -1,11 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
-# patch-claude-1m.sh — Restore 1M context window in Claude Desktop Cowork
+# patch-claude-1m.sh - Restore 1M context window in Claude Desktop Cowork
 #
 # Two same-length JS swaps inside the model-resolution function:
-#   Layer 1a — bypass server-side feature flag 3885610113 that gates [1m] suffix
-#   Layer 1b — broaden the model allow-list to also cover opus-4-7
+#   Layer 1a - bypass server-side feature flag 3885610113 that gates [1m] suffix
+#   Layer 1b - broaden the model allow-list to also cover opus-4-7
 #
 # Layer 1b has TWO known forms across Claude Desktop versions. The preflight
 # detects which form the asar uses and applies the matching same-length swap:
@@ -13,7 +13,7 @@ set -euo pipefail
 #     /sonnet-4-6|opus-4-6/i.test(e) → /opus-4-[67](?:)(?:)/i.test(e)
 #   Form B (array .includes; newer asars, ≥ v1.3109):
 #     ["claude-sonnet-4-6","claude-opus-4-6"] → [ "claude-opus-4-6","claude-opus-4-7" ]
-#     (substring match against e via .some(t => e.includes(t)) — sonnet
+#     (substring match against e via .some(t => e.includes(t)) - sonnet
 #     intentionally dropped per the "Opus-only scope" caveat in README.)
 #
 # Idempotent. A Python preflight classifies asar state as
@@ -74,7 +74,7 @@ on_exit() {
     echo ""
     echo "=== Patch FAILED (exit $exit_code) ==="
     if [ "${PATCH_RESTORE_ON_FAIL:-0}" = "1" ]; then
-      echo "PATCH_RESTORE_ON_FAIL=1 — auto-restoring from backup..."
+      echo "PATCH_RESTORE_ON_FAIL=1 - auto-restoring from backup..."
       if cp "$BACKUP_PATH" "$ASAR_PATH" 2>/dev/null \
         && cp "$PLIST_BACKUP_PATH" "$PLIST_PATH" 2>/dev/null; then
         echo "Restored. Re-launch Claude with: open -a Claude"
@@ -189,7 +189,7 @@ flag_id = b'3885610113'
 with open(asar_path, 'rb') as f:
     data = f.read()
 
-# Layer 1a — same patterns as the Layer 1a patch block below.
+# Layer 1a - same patterns as the Layer 1a patch block below.
 # Both quote variants because minified output can use either.
 flag_patterns = [
     rb'!\w+\("' + flag_id + rb'"\)',
@@ -199,7 +199,7 @@ flag_matches = []
 for p in flag_patterns:
     flag_matches.extend(re.findall(p, data))
 
-# Layer 1b — TWO known forms. Same anchors as the Layer 1b patch blocks below.
+# Layer 1b - TWO known forms. Same anchors as the Layer 1b patch blocks below.
 # Form A (regex): older asars (< v1.3109).
 # Form B (array): newer asars (≥ v1.3109) that swapped the regex literal for
 #                 a JS array used with .some(t => e.includes(t)).
@@ -237,7 +237,7 @@ elif regex_count == 0 and array_count == 0 and patched_1b_array and not patched_
 needs_1a = len(flag_matches) == 1
 
 if form_1b == 'none':
-    # Form unrecognized — neither anchor present in either state. Anthropic
+    # Form unrecognized - neither anchor present in either state. Anthropic
     # likely refactored the gate again. Refuse rather than half-patch.
     state = 'unknown'
 elif needs_1a and needs_1b:
@@ -414,7 +414,7 @@ except Exception:
 print(f"  Replaced: {old_js.decode()} -> {new_js.decode()}")
 PYEOF
 else
-  echo "[3/7] Layer 1a already applied — skipping."
+  echo "[3/7] Layer 1a already applied - skipping."
 fi
 
 # --- Step 4: Patch Layer 1b (model allow-list broaden to include opus-4-7) ---
@@ -429,11 +429,11 @@ form = sys.argv[2]
 # Both forms broaden the allow-list to cover opus-4-6 AND opus-4-7,
 # intentionally dropping sonnet-4-6 (see README "Opus-only scope" caveat).
 if form == 'regex':
-    old = b'sonnet-4-6|opus-4-6'   # 19 bytes — older asars (< v1.3109)
-    new = b'opus-4-[67](?:)(?:)'   # 19 bytes — same-length swap
+    old = b'sonnet-4-6|opus-4-6'   # 19 bytes - older asars (< v1.3109)
+    new = b'opus-4-[67](?:)(?:)'   # 19 bytes - same-length swap
 elif form == 'array':
-    old = b'["claude-sonnet-4-6","claude-opus-4-6"]'   # 39 bytes — newer asars (≥ v1.3109)
-    new = b'[ "claude-opus-4-6","claude-opus-4-7" ]'   # 39 bytes — same-length swap
+    old = b'["claude-sonnet-4-6","claude-opus-4-6"]'   # 39 bytes - newer asars (≥ v1.3109)
+    new = b'[ "claude-opus-4-6","claude-opus-4-7" ]'   # 39 bytes - same-length swap
 else:
     print(f"ERROR: unknown Layer 1b form: {form}")
     sys.exit(1)
@@ -468,7 +468,7 @@ except Exception:
 print(f"  Replaced: /{old.decode()}/i -> /{new.decode()}/i")
 PYEOF
 else
-  echo "[4/7] Layer 1b already applied — skipping."
+  echo "[4/7] Layer 1b already applied - skipping."
 fi
 
 # --- Step 5: Update per-file integrity hashes ---

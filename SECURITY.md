@@ -10,7 +10,7 @@ Use GitHub's private vulnerability reporting flow:
 
 **→ [Report a vulnerability](https://github.com/evanjcosgrove/claude-cowork-1m-patch/security/advisories/new)**
 
-This routes your report through GitHub's private Security Advisories — no public issue, no email. I'm the only recipient, and the advisory stays private until a fix is ready.
+This routes your report through GitHub's private Security Advisories - no public issue, no email. I'm the only recipient, and the advisory stays private until a fix is ready.
 
 Expect an acknowledgement within 7 days. Public disclosure will be coordinated with whatever fix lands in the script; credit is given unless you request anonymity.
 
@@ -25,5 +25,5 @@ Expect an acknowledgement within 7 days. Public disclosure will be coordinated w
 
 - Anthropic's product behavior, including the underlying server-flag rollback this patch addresses.
 - Anything that requires an attacker to already have write access to your `/Applications` directory, your shell environment, or your code-signing chain.
-- The fact that this tool modifies a signed third-party app — that is the documented behavior, see [README § Scope](README.md#scope).
-- Anything that would only matter if the repo distributed patched binaries (it does not — see [README § Legal](README.md#legal)).
+- The fact that this tool modifies a signed third-party app - that is the documented behavior, see [README § Scope](README.md#scope).
+- Anything that would only matter if the repo distributed patched binaries (it does not - see [README § Legal](README.md#legal)).

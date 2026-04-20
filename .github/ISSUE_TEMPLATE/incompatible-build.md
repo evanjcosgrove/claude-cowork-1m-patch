@@ -1,12 +1,12 @@
 ---
 name: Incompatible Claude Desktop build
 about: Preflight exits `unknown`, half-patched asar, or a new Claude Desktop version where the script fails.
-title: "[unknown build] Claude Desktop vX.X.X — preflight exits unknown"
+title: "[unknown build] Claude Desktop vX.X.X - preflight exits unknown"
 labels: []
 ---
 
 <!--
-Thanks for reporting. Please fill in every section — the script can't be updated
+Thanks for reporting. Please fill in every section - the script can't be updated
 to support a new build without all of this info.
 
 Read the welcome post first if you haven't:
@@ -70,4 +70,4 @@ Optional: did the script half-patch? Did Claude relaunch successfully? Any other
 ---
 
 > [!IMPORTANT]
-> **Do not attach the asar itself or any Anthropic binaries.** If the script can't find an anchor, share only the minimal byte context — roughly 20 chars around the missing region. The repo's [scope contract](https://github.com/evanjcosgrove/claude-cowork-1m-patch/blob/main/README.md#scope) is keeping vendor code out of this repo.
+> **Do not attach the asar itself or any Anthropic binaries.** If the script can't find an anchor, share only the minimal byte context - roughly 20 chars around the missing region. The repo's [scope contract](https://github.com/evanjcosgrove/claude-cowork-1m-patch/blob/main/README.md#scope) is keeping vendor code out of this repo.
