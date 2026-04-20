@@ -13,7 +13,9 @@ Whatever had changed wasn't on my end. It lived on the server, and it flipped so
 
 What follows is what it took to find that flag, get past the four integrity layers Electron and macOS wrap around a signed app, and put back the context window I'd been paying for.
 
-Cowork is Claude Desktop's local-agent mode - a sandboxed VM that runs Claude with a stack of business and knowledge-work plugins (product, sales, marketing, data, productivity) and direct access to the tools they wrap (Slack, Notion, [insert X SaaS here...]). The 1M-token context window is one of the main paid features, and the reason I'd been running multi-hour sessions that pulled from half a dozen of those tools at once. Dropping to 200K means losing the ability to hold a whole project - call notes, dashboards, exported chats, source documents - in working memory at the same time. I reached out to Anthropic support multiple times only to receive canned responses, [filed an issue](https://github.com/anthropics/claude-code/issues/37413), found 16 others doing the same across [#36760](https://github.com/anthropics/claude-code/issues/36760), [#36351](https://github.com/anthropics/claude-code/issues/36351), and [#33154](https://github.com/anthropics/claude-code/issues/33154), and watched each of them sit untouched for 30+ days. 
+Cowork is Claude Desktop's local-agent mode - a sandboxed VM that runs Claude with a stack of business and knowledge-work plugins (product, sales, marketing, data, productivity) and direct access to the tools they wrap (Slack, Notion, [insert X SaaS here...]). The 1M-token context window is one of the main paid features, and the reason I'd been running multi-hour sessions that pulled from half a dozen of those tools at once. Dropping to 200K means losing the ability to hold a whole project - call notes, dashboards, exported chats, source documents - in working memory at the same time. I reached out to Anthropic support multiple times only to receive canned responses, [filed an issue](https://github.com/anthropics/claude-code/issues/37413), found 16 others doing the same across [#36760](https://github.com/anthropics/claude-code/issues/36760), [#36351](https://github.com/anthropics/claude-code/issues/36351), and [#33154](https://github.com/anthropics/claude-code/issues/33154), and watched each of them sit untouched for 30+ days.
+
+![Anthropic Support email thread acknowledging the 1M context regression and stating the issue should be resolved](../img/support-thread.png)
 
 So I went looking for a solution myself.
 
@@ -114,9 +116,9 @@ The fix had to happen in a specific order. Extract Anthropic's entitlements **be
 
 It worked.
 
-![Claude Desktop showing claude-opus-4-6[1m] with 547.9k/1m tokens](../img/verification.png)
+![Claude Desktop v1.3109.0 showing claude-opus-4-7[1m] with 55.2k / 1m tokens in the /context view](../img/verification.png)
 
-The screenshot is from a session that had been running unbroken for sixteen days. The same Cowork session - the one I'd started before the regression and had been resuming through the broken weeks - picked up the patched binary on the next spawn and the `[1m]` suffix came back. `/context` now showed `547.9k/1m` and the model resolution function was quietly appending the suffix again.
+Same Cowork session, next spawn after the patch, and the `[1m]` suffix came back. `/context` confirmed it: model resolution was quietly appending the suffix again.
 
 I packaged the work into [a single bash script](https://github.com/evanjcosgrove/claude-cowork-1m-patch/blob/main/patch-claude-1m.sh) that handles the whole sequence - extract entitlements, back up, byte-swap the JavaScript, recompute the per-file and header hashes, re-sign with the preserved entitlements. The same session has continued without interruption since. I've been using it for about a month before deciding to write any of this up, hoping that Anthropic would fix the regression before I had to.
 
