@@ -1,10 +1,36 @@
 theme: minima
 title: claude-cowork-1m-patch
-description: How a server-side feature flag rollback silently downgraded Claude Desktop's Cowork mode from 1M to 200K context, and what it took to put it back — including the four-layer integrity wall and two same-length JS swaps.
+description: How a server-side feature flag rollback silently downgraded Claude Desktop's Cowork mode from 1M to 200K context, and what it took to put it back.
+# Production origin for jekyll-seo-tag (og:url, og:image absolute URLs).
+url: https://evanjcosgrove.github.io
+baseurl: "/claude-cowork-1m-patch"
 markdown: kramdown
+
+plugins:
+  - jekyll-seo-tag
+  - jekyll-feed
+
+# Default Open Graph / Twitter preview image (all pages).
+defaults:
+  - scope:
+      path: ""
+    values:
+      image:
+        path: /img/claude-cowork-1m-patch-hero.png
+        width: 3168
+        height: 1344
+        alt: "claude-cowork-1m-patch - Restoring 1M context in Claude Desktop Cowork"
+
+twitter:
+  username: evanjcosgrove
+  card: summary_large_image
+
 # Empty header_pages suppresses Minima's auto-generated nav (prevents the page
 # from appearing as a nav item next to its own site title).
 header_pages: []
+# integrity-layers.md and root-cause-analysis.md are intentionally GitHub-only
+# (linked from index.md via absolute github.com URLs, not rendered on the Jekyll
+# site). Keep them out of the site build so they don't appear as standalone pages.
 exclude:
   - integrity-layers.md
   - root-cause-analysis.md

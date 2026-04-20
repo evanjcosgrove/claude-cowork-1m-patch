@@ -19,7 +19,11 @@ docs/superpowers/
 AGENTS.md
 Screenshot*
 
-# Internal artifacts — never commit
+# Jekyll (docs/ site): cache and local build output - never commit
+docs/.jekyll-cache/
+docs/_site/
+
+# Internal artifacts - never commit
 up-to-date-logs/
 plans/
 REVIEW.md

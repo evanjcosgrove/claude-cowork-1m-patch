@@ -1,7 +1,7 @@
 ---
 # Front matter is required so Jekyll routes this file through the Sass compiler.
 # Imports Minima as a base, then layers a refined editorial typography system
-# on top — Source Serif 4 for prose, JetBrains Mono for code, custom rhythm
+# on top - Source Serif 4 for prose, JetBrains Mono for code, custom rhythm
 # and color palette. Dark mode is handled via prefers-color-scheme and layered
 # AFTER the light-mode writeup rules so source order resolves correctly.
 ---
@@ -15,7 +15,7 @@
 $serif: "Source Serif 4", ui-serif, Georgia, Cambria, "Times New Roman", serif;
 $mono:  "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-// Light-mode palette — warm off-white, near-black text, muted warm gray.
+// Light-mode palette - warm off-white, near-black text, muted warm gray.
 $bg-light:        #fbfaf7;
 $bg-light-alt:    #f3f0e9;
 $fg-light:        #1c1d1f;
@@ -23,7 +23,7 @@ $fg-light-muted:  #5a5f66;
 $rule-light:      #e6e1d6;
 $accent-light:    #a13c2d;
 
-// Dark-mode palette — keeps the existing GitHub Primer-dark baseline so
+// Dark-mode palette - keeps the existing GitHub Primer-dark baseline so
 // inline screenshots and code blocks continue to feel native on a github.io.
 $bg-dark:         #0d1117;
 $bg-dark-alt:     #161b22;
@@ -33,7 +33,7 @@ $rule-dark:       #30363d;
 $accent-dark:     #ff9a76;
 
 // ============================================================================
-// Global typography — applies to the whole site, not just the writeup layout.
+// Global typography - applies to the whole site, not just the writeup layout.
 // ============================================================================
 
 html {
@@ -72,7 +72,7 @@ a:hover {
 }
 
 // ============================================================================
-// Site header — brand left, github icon right (flex layout).
+// Site header - brand left, github icon right (flex layout).
 // ============================================================================
 
 .site-header {
@@ -108,11 +108,11 @@ a:hover {
 .writeup-gh:hover { color: $fg-light; transform: translateY(-1px); }
 
 // ============================================================================
-// Writeup layout — the overridden `page` layout in _layouts/page.html.
+// Writeup layout - the overridden `page` layout in _layouts/page.html.
 // ============================================================================
 
 .writeup {
-  max-width: 40rem;           // ~640px; ~68ch at 17px — optimal reading measure
+  max-width: 40rem;           // ~640px; ~68ch at 17px - optimal reading measure
   margin: 0 auto;
   padding: 3rem 1.25rem 5rem;
   hanging-punctuation: first last;
@@ -209,12 +209,12 @@ a:hover {
   font-style: italic;
 }
 
-// Strong on long-form should be weight 600, not 700 — less shouty.
+// Strong on long-form should be weight 600, not 700 - less shouty.
 .writeup-content strong {
   font-weight: 600;
 }
 
-// Section headers — quiet top border, generous space above, tight below.
+// Section headers - quiet top border, generous space above, tight below.
 .writeup-content h2 {
   position: relative;
   margin: 3.25rem 0 1rem;
@@ -253,7 +253,7 @@ a:hover {
   line-height: 1.25;
 }
 
-// Images — framed with a hair rule + lift, centered.
+// Images - framed with a hair rule + lift, centered.
 .writeup-content img {
   display: block;
   margin: 1.75rem auto;
@@ -263,7 +263,7 @@ a:hover {
               0 10px 30px rgba(28, 29, 31, 0.08);
 }
 
-// Code — inline gets subtle background; blocks get a quiet frame.
+// Code - inline gets subtle background; blocks get a quiet frame.
 .writeup-content code {
   font-size: 0.92em;
   padding: 0.12em 0.35em;
@@ -287,7 +287,7 @@ a:hover {
   font-size: 0.9rem;
 }
 
-// Blockquotes — editorial feel: indent, muted color, left hairline.
+// Blockquotes - editorial feel: indent, muted color, left hairline.
 .writeup-content blockquote {
   margin: 1.5rem 0;
   padding: 0.25rem 0 0.25rem 1.25rem;
@@ -296,7 +296,7 @@ a:hover {
   font-style: italic;
 }
 
-// Disclosure box — quiet, inviting, readable in both modes.
+// Disclosure box - quiet, inviting, readable in both modes.
 .writeup-content details {
   margin: 1.75rem 0;
   padding: 0.9rem 1.1rem;
@@ -332,7 +332,7 @@ a:hover {
   color: $accent-light;
 }
 
-// Horizontal rules — hairline, centered breathing room.
+// Horizontal rules - hairline, centered breathing room.
 .writeup-content hr {
   border: 0;
   height: 1px;
@@ -361,7 +361,7 @@ a:hover {
   font-size: 0.78rem;
 }
 
-// Further Reading — editorial small-caps section label.
+// Further Reading - editorial small-caps section label.
 .writeup-content h2#further-reading,
 .writeup-content h2:last-of-type {
   // Optional: uncomment to apply small-caps treatment to the last h2.
@@ -369,7 +369,7 @@ a:hover {
   // letter-spacing: 0.08em;
 }
 
-// Lists — tighter spacing, keep readable rhythm.
+// Lists - tighter spacing, keep readable rhythm.
 .writeup-content ul,
 .writeup-content ol {
   margin: 0 0 1.3rem 1.25rem;
@@ -384,7 +384,7 @@ a:hover {
 }
 
 // ============================================================================
-// Site footer — single-line, centered, muted.
+// Site footer - single-line, centered, muted.
 // ============================================================================
 
 .writeup-footer {
@@ -423,7 +423,7 @@ a:hover {
 }
 
 // ============================================================================
-// Dark mode — declared AFTER the light-mode writeup rules so source order
+// Dark mode - declared AFTER the light-mode writeup rules so source order
 // resolves correctly at equal specificity. This fixes the earlier bug where
 // details{} was rendering with a light background under the dark scheme.
 // ============================================================================
@@ -481,7 +481,7 @@ a:hover {
   .highlight .o, .highlight .ow    { color: #ff7b72; }
   .highlight .p                    { color: $fg-dark; }
 
-  // Writeup typography — dark harmony
+  // Writeup typography - dark harmony
   .writeup-title                   { color: $fg-dark; }
   .writeup-tagline                 { color: $fg-dark-muted; }
   .writeup-content                 { color: $fg-dark; }

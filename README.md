@@ -6,7 +6,7 @@
 
 <h1 align="center">claude-cowork-1m-patch</h1>
 
-<p align="center"><em>macOS patch that restores 1M-token context in Claude Cowork</em></p>
+<p align="center">macOS patch that restores 1M-token context in Claude Cowork</p>
 
 <p align="center"><em>two same-length JS byte swaps &bull; re-signed bundle &bull; fully reversible</em></p>
 
@@ -145,60 +145,24 @@ osascript -e 'quit app "Claude"'; sleep 2; open -a Claude
 > [!TIP]
 > If macOS rejects the rolled-back app with "Invalid installation" or a Gatekeeper block (the bundle's outer signature still references the patched files' hashes), the cleanest recovery is to reinstall Claude Desktop from <https://claude.ai/download> - about a minute, and you get a fresh signed copy.
 
-<details>
-<summary><h2 id="root-cause-deep-dive" style="display:inline">Root Cause (deep dive)</h2></summary>
+<h2 id="root-cause-deep-dive">Root Cause (deep dive)</h2>
 
-The Electron app's `app.asar` contains a model-resolution function with **two independent gates** that both must pass for `[1m]` to be appended:
+The model-resolution function in `app.asar` has two JS gates that both must pass for `[1m]` to be appended: a server feature-flag check (`3885610113`) and a model allow-list. The flag rollback on 2026-03-19 broke the first gate for every Cowork user; the `opus-4-7` rollout on 2026-04-18 broke the second for 4-7 sessions. The flag ID is the stable Layer 1a anchor; Layer 1b exists in two forms (regex for Claude Desktop < v1.3109, JS array for ≥ v1.3109) which the preflight auto-detects.
 
-```javascript
-function ZAt(t) {
-  return /\[1m\]/i.test(t) || !Sn("3885610113") || !/sonnet-4-6|opus-4-6/i.test(t)
-    ? t
-    : `${t}[1m]`
-}
-```
+For the full narrative (how the flag was found, why extract/repack fails, how each regression was diagnosed) see [docs/root-cause-analysis.md](docs/root-cause-analysis.md). For the per-layer byte-swap spec see [docs/integrity-layers.md](docs/integrity-layers.md).
 
-> *This snippet is from the older asar shape (Claude Desktop < v1.3109). Claude Desktop ≥ v1.3109 replaced the regex with a JS array - same three OR conditions, different syntax. Both forms are handled; see [CHANGELOG.md](CHANGELOG.md) and the patch script's preflight.*
+<h2 id="how-it-works--four-integrity-layers">How It Works - Four integrity layers</h2>
 
-The ternary is a three-condition OR - if **any** is true, the model name is returned unchanged.
-
-- **Gate A - Server feature flag.** `Sn("3885610113")` checks a server-side flag. When **off** (current state since 2026-03-19), `!Sn(...)` evaluates to `true`, the ternary short-circuits, and `[1m]` is never appended. You get 200K regardless of your plan.
-- **Gate B - Model allow-list.** Even with the flag on, the regex `/sonnet-4-6|opus-4-6/i` only allows 1M for those two model names. When Anthropic shipped `claude-opus-4-7` to Cowork on 2026-04-18, the regex did **not** match it - so even an already-patched binary downgrades 4-7 sessions to 200K.
-
-The patch addresses both gates with two same-length JS swaps. The function and variable names (`ZAt`, `Sn`, `A7e`, `Ti`, …) are minified and rotate between app versions. The flag ID `3885610113` is the stable Layer 1a anchor.
-
-For Layer 1b, Anthropic refactored the gate from a regex to an array `.includes()` check around Claude Desktop v1.3109. The script knows both byte anchors and detects which is present at runtime:
-
-- **Form A (regex; older asars, < v1.3109):** anchor `sonnet-4-6|opus-4-6` → `opus-4-[67](?:)(?:)` (19-byte swap).
-- **Form B (array; newer asars, ≥ v1.3109):** anchor `["claude-sonnet-4-6","claude-opus-4-6"]` → `[ "claude-opus-4-6","claude-opus-4-7" ]` (39-byte swap).
-
-If neither anchor is present in either form, the script refuses to half-patch and exits with `unknown` - meaning Anthropic refactored the gate again and the script needs a Form C.
-
-</details>
-
-<details>
-<summary><h2 id="how-it-works--four-integrity-layers" style="display:inline">How It Works - Four integrity layers</h2></summary>
-
-The patch modifies one JS expression in the asar, but the app enforces four integrity layers that all break when any file changes. Each layer must be updated in sequence:
-
+The app enforces four integrity layers that all break when any file changes. The patch updates them in sequence:
 
 | Layer                       | What it checks                                                       | How the patch handles it                                                                                                                                                                                                                 |
 | --------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1. JS application logic** | Two gates in the model-resolution function: server feature flag + model allow-list (regex on older asars, JS array on newer asars). | **1a:** Replace `!Sn("3885610113")` with `!1/*___________*/` (same 17 bytes, evaluates to `false`). **1b:** Either `sonnet-4-6\|opus-4-6` → `opus-4-[67](?:)(?:)` (regex form, 19 bytes) or `["claude-sonnet-4-6","claude-opus-4-6"]` → `[ "claude-opus-4-6","claude-opus-4-7" ]` (array form, 39 bytes), depending on which anchor the asar contains. |
-| **2. Per-file integrity**   | SHA256 of `index.js` in asar header                                  | Recompute file hash + block hashes, replace in header (same-length)                                                                                                                                                                      |
-| **3. Header integrity**     | SHA256 of asar header in `Info.plist`                                | Recompute via `@electron/asar` `getRawHeader()`, write to plist                                                                                                                                                                          |
-| **4. Code signature**       | macOS entitlements for Cowork's VM sandbox                           | Extract original entitlements before patching, re-sign with `--entitlements`                                                                                                                                                             |
+| **1. JS application logic** | Two gates in the model-resolution function: server feature flag + model allow-list. | Two same-length JS swaps. Layer 1b's form (regex vs array) rotated between app versions; the preflight auto-detects. Spec: [docs/integrity-layers.md § Layer 1](docs/integrity-layers.md#layer-1---application-logic-two-js-gates). |
+| **2. Per-file integrity**   | SHA256 of `index.js` in asar header                                  | Recompute file hash + block hashes, replace in header (same-length). |
+| **3. Header integrity**     | SHA256 of asar header in `Info.plist`                                | Recompute via `@electron/asar` `getRawHeader()`, write to plist.     |
+| **4. Code signature**       | macOS entitlements for Cowork's VM sandbox                           | Extract original entitlements before patching, re-sign with `--entitlements` (not `--deep`). |
 
-
-The key constraint: all replacements must be **same-length**. Changing any file offset invalidates V8's compiled bytecode cache, causing `EXC_BREAKPOINT` crashes on launch. This rules out the obvious approach (extract the asar, edit the JS, repack) - repacking inflates the archive from 19MB to 60MB because native `.node` binaries get pulled in from `app.asar.unpacked`.
-
-For the full technical deep-dive on each layer, see [docs/integrity-layers.md](docs/integrity-layers.md). For the reverse engineering process and the failed extract/repack attempt, see [docs/root-cause-analysis.md](docs/root-cause-analysis.md).
-
-### Entitlements gotcha
-
-After re-signing, Cowork may show "Invalid installation" if `com.apple.security.virtualization` is missing from the signature. This happens when you sign with `codesign --deep`, which re-signs inner frameworks and strips their original Anthropic signatures. The fix: sign **without** `--deep` and pass the original entitlements via `--entitlements`. The script handles this automatically by extracting entitlements before making any modifications.
-
-</details>
+All JS replacements must be same-length - any offset shift invalidates V8's compiled bytecode cache and the app crashes on launch. This is why extract/repack doesn't work. Full per-layer detail: [docs/integrity-layers.md](docs/integrity-layers.md).
 
 <details>
 <summary><h2 id="log-evidence" style="display:inline">Log Evidence</h2></summary>
@@ -213,17 +177,17 @@ After re-signing, Cowork may show "Invalid installation" if `com.apple.security.
 | 2026-04-03 09:08        | Context window exceeded error - confirmed hitting 200K wall                                                                                                               |
 | 2026-04-18 20:19:30     | Last working `opus-4-6[1m]` session under flag-bypass-only patch                                                                                                          |
 | 2026-04-18 20:19:53     | **Second regression** - first `opus-4-7` session, no `[1m]`. Same app version (1.569.0), flag-bypass patch still installed. Model allow-list regex doesn't recognize 4-7. |
-| 2026-04-19 → 04-20      | **v1.3109.0 refactor discovered** - Anthropic replaced the regex gate with a JS array (`["claude-sonnet-4-6","claude-opus-4-6"]` used with `.some(t => e.includes(t))`). The script's regex anchor was absent in the new asar; preflight half-patched and verification failed. Added Form B (array) detection + matching same-length swap. See [CHANGELOG.md](CHANGELOG.md). |
+| 2026-04-19 → 04-20      | **v1.3109.0 regex→array refactor discovered.** Preflight updated to detect both forms; see [CHANGELOG.md](CHANGELOG.md) and [docs/root-cause-analysis.md § April 19–20 2026](docs/root-cause-analysis.md#april-1920-2026---form-b-discovered-regex--array-refactor). |
 
 </details>
 
 ## Caveats
 
 - **Auto-updates overwrite the patch.** Re-run `./patch-claude-1m.sh` after each Claude Desktop update.
-- **Minified names change between versions.** The script matches by stable byte anchors: the flag ID `3885610113` (Layer 1a), and one of two Layer 1b anchors depending on the asar version - `sonnet-4-6|opus-4-6` (regex form, older) or `["claude-sonnet-4-6","claude-opus-4-6"]` (array form, newer). Variable and function names (`ZAt`, `Sn`, `A7e`, `Ti`, …) are not relied on. When Anthropic refactors the gate again, expect to add a Form C.
+- **Minified names change between versions.** The script matches by stable byte anchors (flag ID + Layer 1b form); minified variable names are never relied on. When Anthropic refactors the gate again, expect to add a Form C - see [docs/integrity-layers.md § Layer 1](docs/integrity-layers.md#layer-1---application-logic-two-js-gates) for the current anchor set.
 
 > [!IMPORTANT]
-> **Opus-only scope.** Layer 1b's new regex `opus-4-[67]` matches `opus-4-6` and `opus-4-7` only. The original regex also matched `sonnet-4-6` - that match is intentionally dropped so the rule is deterministic. If/when Anthropic ships `opus-4-8`, re-run the script after editing the 19-byte literal in the Layer 1b Python block of `patch-claude-1m.sh` (or open an issue).
+> **Opus-only scope.** Layer 1b matches `opus-4-6` and `opus-4-7` only. `sonnet-4-6` is intentionally dropped so the rule is deterministic (as of April 2026: sonnet `[1m]` is billed at API rates; opus `[1m]` is bundled in Max - auto-suffixing sonnet would silently route bundled usage onto a metered tab). If/when `opus-4-8` ships, update the Layer 1b anchor in `patch-claude-1m.sh` or open an issue.
 
 - **The script is intentionally conservative.** If it can't recognize the current build, it exits with `unknown` rather than half-patch. Re-run safely.
 - **This modifies the app binary.** The script creates a backup on every run. Fully reversible (see Rollback).

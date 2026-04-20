@@ -17,8 +17,8 @@ The [welcome post](https://github.com/evanjcosgrove/claude-cowork-1m-patch/discu
 
 Especially welcome:
 
-- **Form C support** when Anthropic refactors the model-resolution gate again — the script already auto-detects between Form A (regex) and Form B (array); see [CHANGELOG](CHANGELOG.md) for the precedent and [docs/integrity-layers.md](docs/integrity-layers.md) for the layer model.
-- **New verified Claude Desktop versions** — please add a row to the Compatibility table in [README.md](README.md) with the date you tested.
+- **Form C support** when Anthropic refactors the model-resolution gate again - the script already auto-detects between Form A (regex) and Form B (array); see [CHANGELOG](CHANGELOG.md) for the precedent and [docs/integrity-layers.md](docs/integrity-layers.md) for the layer model.
+- **New verified Claude Desktop versions** - please add a row to the Compatibility table in [README.md](README.md) with the date you tested.
 - **Documentation fixes.**
 
 For larger changes, please open an issue or discussion first so we can align on scope before you write code.
@@ -30,7 +30,7 @@ For larger changes, please open an issue or discussion first so we can align on 
 
 - Bash with `set -euo pipefail`.
 - Inline Python via heredocs with positional argv (`<< 'PYEOF'`, no bash interpolation in the body).
-- Same-length swaps for any new asar mutation — see [docs/integrity-layers.md](docs/integrity-layers.md) for why V8's bytecode cache makes this non-negotiable.
+- Same-length swaps for any new asar mutation - see [docs/integrity-layers.md](docs/integrity-layers.md) for why V8's bytecode cache makes this non-negotiable.
 - Conventional commits: `type: description` (e.g. `fix:`, `feat:`, `docs:`).
 - Idempotent: the script must be safe to re-run multiple times.
 
