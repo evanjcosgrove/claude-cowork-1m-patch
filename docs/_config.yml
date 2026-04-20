@@ -2,6 +2,9 @@ theme: minima
 title: claude-cowork-1m-patch
 description: How a server-side feature flag rollback silently downgraded Claude Desktop's Cowork mode from 1M to 200K context, and what it took to put it back — including the four-layer integrity wall and two same-length JS swaps.
 markdown: kramdown
+# Empty header_pages suppresses Minima's auto-generated nav (prevents the page
+# from appearing as a nav item next to its own site title).
+header_pages: []
 exclude:
   - integrity-layers.md
   - root-cause-analysis.md

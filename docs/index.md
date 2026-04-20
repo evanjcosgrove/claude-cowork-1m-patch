@@ -150,7 +150,3 @@ Three things from this:
 - [docs/integrity-layers.md](https://github.com/evanjcosgrove/claude-cowork-1m-patch/blob/main/docs/integrity-layers.md) - the four integrity layers in detail
 - [docs/root-cause-analysis.md](https://github.com/evanjcosgrove/claude-cowork-1m-patch/blob/main/docs/root-cause-analysis.md) - how the flag was found, why extract/repack fails
 - [Discussions](https://github.com/evanjcosgrove/claude-cowork-1m-patch/discussions) - Q&A, version-compat chatter, bug-report template
-
----
-
-<p align="center" markdown="1">*Code: [github.com/evanjcosgrove/claude-cowork-1m-patch](https://github.com/evanjcosgrove/claude-cowork-1m-patch) · [LinkedIn](https://linkedin.com/in/evanjcosgrove) · [Instagram](https://www.instagram.com/evanjcosgrove/) · [@evanjcosgrove](https://x.com/evanjcosgrove)*</p>

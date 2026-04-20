@@ -1,146 +1,424 @@
 ---
 # Front matter is required so Jekyll routes this file through the Sass compiler.
-# Importing "minima" loads the theme's classic light skin first; the
-# @media block below layers dark overrides on top when the reader's OS is
-# set to a dark color scheme. No JavaScript, no toggle — follows the OS.
+# Imports Minima as a base, then layers a refined editorial typography system
+# on top — Source Serif 4 for prose, JetBrains Mono for code, custom rhythm
+# and color palette. Dark mode is handled via prefers-color-scheme and layered
+# AFTER the light-mode writeup rules so source order resolves correctly.
 ---
 
 @import "minima";
 
-@media (prefers-color-scheme: dark) {
-  // GitHub Primer-esque palette: feels native on a github.io site,
-  // and matches the visual register technical readers expect.
-  body {
-    background-color: #0d1117;
-    color: #c9d1d9;
-  }
+// ============================================================================
+// Tokens
+// ============================================================================
 
-  .site-header,
-  .site-footer {
-    background-color: #161b22;
-    border-color: #30363d;
-  }
+$serif: "Source Serif 4", ui-serif, Georgia, Cambria, "Times New Roman", serif;
+$mono:  "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  .site-title,
-  .site-title:visited,
-  .site-nav .page-link {
-    color: #c9d1d9 !important;
-  }
+// Light-mode palette — warm off-white, near-black text, muted warm gray.
+$bg-light:        #fbfaf7;
+$bg-light-alt:    #f3f0e9;
+$fg-light:        #1c1d1f;
+$fg-light-muted:  #5a5f66;
+$rule-light:      #e6e1d6;
+$accent-light:    #a13c2d;
 
-  a            { color: #58a6ff; }
-  a:visited    { color: #a371f7; }
-  a:hover      { color: #79c0ff; text-decoration-color: #58a6ff; }
+// Dark-mode palette — keeps the existing GitHub Primer-dark baseline so
+// inline screenshots and code blocks continue to feel native on a github.io.
+$bg-dark:         #0d1117;
+$bg-dark-alt:     #161b22;
+$fg-dark:         #c9d1d9;
+$fg-dark-muted:   #8b949e;
+$rule-dark:       #30363d;
+$accent-dark:     #ff9a76;
 
-  hr,
-  table,
-  table th,
-  table td     { border-color: #30363d; }
+// ============================================================================
+// Global typography — applies to the whole site, not just the writeup layout.
+// ============================================================================
 
-  table th     { background-color: #161b22; color: #c9d1d9; }
-  table tr     { background-color: #0d1117; }
-  table tr:nth-child(even) { background-color: #161b22; }
-
-  blockquote {
-    color: #8b949e;
-    border-left-color: #30363d;
-  }
-
-  // Inline code + fenced blocks
-  code, pre {
-    background-color: #161b22;
-    color: #c9d1d9;
-    border-color: #30363d;
-  }
-
-  // Rouge syntax highlighting (Minima's default)
-  .highlight { background-color: #161b22; }
-  .highlighter-rouge .highlight { background-color: #161b22; }
-  .highlight .c, .highlight .c1, .highlight .cm,
-  .highlight .cp, .highlight .cs   { color: #8b949e; font-style: italic; } // comments
-  .highlight .k, .highlight .kc, .highlight .kd,
-  .highlight .kn, .highlight .kp, .highlight .kr,
-  .highlight .kt                   { color: #ff7b72; } // keywords
-  .highlight .s, .highlight .s1, .highlight .s2,
-  .highlight .sb, .highlight .sc, .highlight .sd,
-  .highlight .se, .highlight .sh, .highlight .si,
-  .highlight .sx, .highlight .sr, .highlight .ss   { color: #a5d6ff; } // strings
-  .highlight .nb, .highlight .nf, .highlight .nc,
-  .highlight .nd, .highlight .ne, .highlight .ni,
-  .highlight .no, .highlight .nt   { color: #d2a8ff; } // names / functions
-  .highlight .mi, .highlight .mf,
-  .highlight .mh, .highlight .mo   { color: #79c0ff; } // numbers
-  .highlight .o, .highlight .ow    { color: #ff7b72; } // operators
-  .highlight .p                    { color: #c9d1d9; } // punctuation
-
-  // Soft frame around inline screenshots so the light-UI captures
-  // don't punch a stark white hole in a dark page.
-  .post-content img,
-  .page-content img {
-    box-shadow: 0 0 0 1px #30363d, 0 8px 24px rgba(0, 0, 0, 0.4);
-    border-radius: 4px;
-  }
-
-  // <details> disclosure styling — keep it readable in dark mode.
-  details > summary {
-    color: #c9d1d9;
-    cursor: pointer;
-  }
-  details > summary:hover { color: #58a6ff; }
-
-  // Dark-mode harmony for the .writeup overrides below.
-  .writeup-tagline         { color: #8b949e; }
-  .writeup-content h2      { border-top-color: #30363d; }
-  .writeup-content details { border-color: #30363d; background: #161b22; }
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-// ---- Writeup typography (applies to the overridden `page` layout) ----
-// Scoped under `.writeup` so nothing here leaks into other Minima pages.
+body {
+  font-family: $serif;
+  font-optical-sizing: auto;
+  font-feature-settings: "kern", "liga", "calt";
+  background-color: $bg-light;
+  color: $fg-light;
+}
+
+code, pre, kbd, samp {
+  font-family: $mono;
+  font-feature-settings: "liga", "calt";
+}
+
+a {
+  color: $accent-light;
+  text-decoration-color: rgba($accent-light, 0.4);
+  text-underline-offset: 0.15em;
+  transition: color 120ms ease, text-decoration-color 120ms ease;
+}
+a:hover {
+  color: darken($accent-light, 8%);
+  text-decoration-color: $accent-light;
+}
+
+::selection {
+  background-color: rgba($accent-light, 0.22);
+  color: inherit;
+}
+
+// ============================================================================
+// Site header — brand-only (nav is suppressed via header_pages: []).
+// ============================================================================
+
+.site-header {
+  background-color: $bg-light;
+  border-top: none;
+  border-bottom: 1px solid $rule-light;
+}
+
+.site-title,
+.site-title:visited {
+  font-family: $mono;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  letter-spacing: -0.005em;
+  color: $fg-light !important;
+  text-decoration: none;
+}
+
+// ============================================================================
+// Writeup layout — the overridden `page` layout in _layouts/page.html.
+// ============================================================================
+
 .writeup {
-  max-width: 42rem;          // ~672px; comfortable reading measure (~70ch)
+  max-width: 40rem;           // ~640px; ~68ch at 17px — optimal reading measure
   margin: 0 auto;
-  padding: 1.5rem 1rem 4rem;
+  padding: 3rem 1.25rem 5rem;
+  hanging-punctuation: first last;
 }
 
 .writeup-title {
-  font-size: 2.25rem;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
-  margin: 0 0 0.5rem;
+  font-family: $serif;
+  font-weight: 600;
+  font-size: 2rem;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  margin: 0 0 0.75rem;
+  text-wrap: balance;
 }
 
 .writeup-tagline {
-  font-size: 1.05rem;
-  color: #6a737d;
+  font-family: $serif;
+  font-style: italic;
+  font-size: 1.0625rem;
+  color: $fg-light-muted;
   margin: 0 0 2.5rem;
 }
 
 .writeup-content {
-  font-size: 1.0625rem;      // ~17px
-  line-height: 1.7;
+  font-size: 1.0625rem;       // ~17px
+  line-height: 1.75;
+  color: $fg-light;
 }
 
-.writeup-content > p { margin: 0 0 1.25rem; }
+.writeup-content > p {
+  margin: 0 0 1.3rem;
+}
 
+// Italics should feel distinct, not just oblique.
+.writeup-content em {
+  font-style: italic;
+}
+
+// Strong on long-form should be weight 600, not 700 — less shouty.
+.writeup-content strong {
+  font-weight: 600;
+}
+
+// Section headers — quiet top border, generous space above, tight below.
 .writeup-content h2 {
-  margin-top: 3rem;
-  margin-bottom: 1rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #eaecef;
-  font-size: 1.5rem;
+  margin: 3.25rem 0 1rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid $rule-light;
+  font-family: $serif;
+  font-weight: 600;
+  font-size: 1.375rem;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
 }
 
 .writeup-content h3 {
-  margin-top: 2rem;
-  margin-bottom: 0.75rem;
-  font-size: 1.2rem;
+  margin: 2rem 0 0.6rem;
+  font-family: $serif;
+  font-weight: 600;
+  font-size: 1.125rem;
+  line-height: 1.25;
 }
 
-.writeup-content img { display: block; margin: 1.5rem auto; }
+// Images — framed with a hair rule + lift, centered.
+.writeup-content img {
+  display: block;
+  margin: 1.75rem auto;
+  max-width: 100%;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px $rule-light,
+              0 10px 30px rgba(28, 29, 31, 0.08);
+}
 
-.writeup-content details {
-  margin: 1.5rem 0;
-  padding: 0.75rem 1rem;
-  border: 1px solid #eaecef;
+// Code — inline gets subtle background; blocks get a quiet frame.
+.writeup-content code {
+  font-size: 0.92em;
+  padding: 0.12em 0.35em;
+  border-radius: 3px;
+  background-color: $bg-light-alt;
+  color: $fg-light;
+}
+
+.writeup-content pre {
+  padding: 1rem 1.25rem;
   border-radius: 6px;
-  background: #f6f8fa;
+  background-color: $bg-light-alt;
+  border: 1px solid $rule-light;
+  line-height: 1.55;
+  overflow-x: auto;
+}
+
+.writeup-content pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 0.9rem;
+}
+
+// Blockquotes — editorial feel: indent, muted color, left hairline.
+.writeup-content blockquote {
+  margin: 1.5rem 0;
+  padding: 0.25rem 0 0.25rem 1.25rem;
+  border-left: 2px solid $rule-light;
+  color: $fg-light-muted;
+  font-style: italic;
+}
+
+// Disclosure box — quiet, inviting, readable in both modes.
+.writeup-content details {
+  margin: 1.75rem 0;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid $rule-light;
+  border-radius: 6px;
+  background-color: $bg-light-alt;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.writeup-content details[open] {
+  border-color: darken($rule-light, 8%);
+}
+.writeup-content details > summary {
+  cursor: pointer;
+  font-family: $serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: $fg-light;
+  list-style: none;
+}
+.writeup-content details > summary::-webkit-details-marker { display: none; }
+.writeup-content details > summary::before {
+  content: "▸";
+  display: inline-block;
+  width: 1.1em;
+  font-size: 0.85em;
+  color: $fg-light-muted;
+  transition: transform 140ms ease;
+}
+.writeup-content details[open] > summary::before {
+  transform: rotate(90deg);
+}
+.writeup-content details > summary:hover {
+  color: $accent-light;
+}
+
+// Horizontal rules — hairline, centered breathing room.
+.writeup-content hr {
+  border: 0;
+  height: 1px;
+  background-color: $rule-light;
+  margin: 2.5rem auto;
+  width: 6rem;
+}
+
+// Tables (the compatibility / integrity / log-evidence tables).
+.writeup-content table {
+  width: 100%;
+  margin: 1.5rem 0;
+  font-size: 0.95rem;
+  border-collapse: collapse;
+}
+.writeup-content th, .writeup-content td {
+  padding: 0.55rem 0.8rem;
+  border-bottom: 1px solid $rule-light;
+  text-align: left;
+}
+.writeup-content th {
+  font-weight: 600;
+  color: $fg-light-muted;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.78rem;
+}
+
+// Further Reading — editorial small-caps section label.
+.writeup-content h2#further-reading,
+.writeup-content h2:last-of-type {
+  // Optional: uncomment to apply small-caps treatment to the last h2.
+  // font-variant-caps: all-small-caps;
+  // letter-spacing: 0.08em;
+}
+
+// Lists — tighter spacing, keep readable rhythm.
+.writeup-content ul,
+.writeup-content ol {
+  margin: 0 0 1.3rem 1.25rem;
+  padding: 0;
+}
+.writeup-content li {
+  margin-bottom: 0.5rem;
+  padding-left: 0.25rem;
+}
+.writeup-content ul > li::marker {
+  color: $fg-light-muted;
+}
+
+// ============================================================================
+// Site footer — single-line, centered, muted.
+// ============================================================================
+
+.writeup-footer {
+  border-top: 1px solid $rule-light;
+  background: transparent;
+  padding: 1.75rem 1.25rem 2.5rem;
+  margin-top: 2rem;
+}
+.writeup-footer-inner {
+  max-width: 40rem;
+  margin: 0 auto;
+  text-align: center;
+}
+.writeup-footer-links {
+  font-family: $mono;
+  font-size: 0.82rem;
+  color: $fg-light-muted;
+  letter-spacing: 0.01em;
+  line-height: 1.9;
+  margin: 0;
+}
+.writeup-footer-links a {
+  color: $fg-light-muted;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+.writeup-footer-links a:hover {
+  color: $accent-light;
+  border-bottom-color: rgba($accent-light, 0.4);
+}
+.writeup-footer-sep {
+  display: inline-block;
+  margin: 0 0.45em;
+  color: $rule-light;
+}
+
+// ============================================================================
+// Dark mode — declared AFTER the light-mode writeup rules so source order
+// resolves correctly at equal specificity. This fixes the earlier bug where
+// details{} was rendering with a light background under the dark scheme.
+// ============================================================================
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: $bg-dark;
+    color: $fg-dark;
+  }
+
+  a            { color: $accent-dark; text-decoration-color: rgba($accent-dark, 0.4); }
+  a:hover      { color: lighten($accent-dark, 5%); text-decoration-color: $accent-dark; }
+
+  ::selection  { background-color: rgba($accent-dark, 0.28); }
+
+  .site-header,
+  .site-footer {
+    background-color: $bg-dark;
+    border-color: $rule-dark;
+  }
+
+  .site-title,
+  .site-title:visited,
+  .site-nav .page-link { color: $fg-dark !important; }
+
+  // Minima base tables / blockquotes / hr
+  hr, table, table th, table td { border-color: $rule-dark; }
+  table th { background-color: $bg-dark-alt; color: $fg-dark; }
+  table tr { background-color: $bg-dark; }
+  table tr:nth-child(even) { background-color: $bg-dark-alt; }
+  blockquote { color: $fg-dark-muted; border-left-color: $rule-dark; }
+
+  // Minima default inline code / fenced blocks
+  code, pre {
+    background-color: $bg-dark-alt;
+    color: $fg-dark;
+    border-color: $rule-dark;
+  }
+  .highlight { background-color: $bg-dark-alt; }
+  .highlighter-rouge .highlight { background-color: $bg-dark-alt; }
+  .highlight .c, .highlight .c1, .highlight .cm,
+  .highlight .cp, .highlight .cs   { color: $fg-dark-muted; font-style: italic; }
+  .highlight .k, .highlight .kc, .highlight .kd,
+  .highlight .kn, .highlight .kp, .highlight .kr,
+  .highlight .kt                   { color: #ff7b72; }
+  .highlight .s, .highlight .s1, .highlight .s2,
+  .highlight .sb, .highlight .sc, .highlight .sd,
+  .highlight .se, .highlight .sh, .highlight .si,
+  .highlight .sx, .highlight .sr, .highlight .ss   { color: #a5d6ff; }
+  .highlight .nb, .highlight .nf, .highlight .nc,
+  .highlight .nd, .highlight .ne, .highlight .ni,
+  .highlight .no, .highlight .nt   { color: #d2a8ff; }
+  .highlight .mi, .highlight .mf,
+  .highlight .mh, .highlight .mo   { color: #79c0ff; }
+  .highlight .o, .highlight .ow    { color: #ff7b72; }
+  .highlight .p                    { color: $fg-dark; }
+
+  // Writeup typography — dark harmony
+  .writeup-title                   { color: $fg-dark; }
+  .writeup-tagline                 { color: $fg-dark-muted; }
+  .writeup-content                 { color: $fg-dark; }
+
+  .writeup-content h2              { border-top-color: $rule-dark; color: $fg-dark; }
+  .writeup-content h3              { color: $fg-dark; }
+
+  .writeup-content code            { background-color: $bg-dark-alt; color: $fg-dark; }
+  .writeup-content pre             { background-color: $bg-dark-alt; border-color: $rule-dark; }
+  .writeup-content pre code        { background: transparent; }
+
+  .writeup-content blockquote      { color: $fg-dark-muted; border-left-color: $rule-dark; }
+
+  .writeup-content img             { box-shadow: 0 0 0 1px $rule-dark, 0 10px 30px rgba(0, 0, 0, 0.5); }
+
+  .writeup-content details         { background-color: $bg-dark-alt; border-color: $rule-dark; }
+  .writeup-content details[open]   { border-color: lighten($rule-dark, 8%); }
+  .writeup-content details > summary           { color: $fg-dark; }
+  .writeup-content details > summary::before   { color: $fg-dark-muted; }
+  .writeup-content details > summary:hover     { color: $accent-dark; }
+
+  .writeup-content hr              { background-color: $rule-dark; }
+  .writeup-content th, .writeup-content td { border-bottom-color: $rule-dark; }
+  .writeup-content th              { color: $fg-dark-muted; background: transparent; }
+  .writeup-content ul > li::marker { color: $fg-dark-muted; }
+
+  // Footer
+  .writeup-footer                  { border-top-color: $rule-dark; }
+  .writeup-footer-links            { color: $fg-dark-muted; }
+  .writeup-footer-links a          { color: $fg-dark-muted; }
+  .writeup-footer-links a:hover    { color: $accent-dark; border-bottom-color: rgba($accent-dark, 0.4); }
+  .writeup-footer-sep              { color: $rule-dark; }
 }
