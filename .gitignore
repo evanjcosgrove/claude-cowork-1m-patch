@@ -5,7 +5,16 @@ node_modules/
 __pycache__/
 *.pyc
 .cursor/
+.claude/
 .remember/
+
+# Defensive: never commit credentials or keys
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa*
 docs/superpowers/
 AGENTS.md
 Screenshot*
