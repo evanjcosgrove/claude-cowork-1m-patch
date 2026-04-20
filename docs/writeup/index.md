@@ -15,7 +15,14 @@ What follows is what it took to find that flag, get past the four integrity laye
 
 Cowork is Claude Desktop's local-agent mode - a sandboxed VM that runs Claude with a stack of business and knowledge-work plugins (product, sales, marketing, data, productivity) and direct access to the tools they wrap (Slack, Notion, [insert X SaaS here...]). The 1M-token context window is one of the main paid features, and the reason I'd been running multi-hour sessions that pulled from half a dozen of those tools at once. Dropping to 200K means losing the ability to hold a whole project - call notes, dashboards, exported chats, source documents - in working memory at the same time. I reached out to Anthropic support multiple times only to receive canned responses, [filed an issue](https://github.com/anthropics/claude-code/issues/37413), found 16 others doing the same across [#36760](https://github.com/anthropics/claude-code/issues/36760), [#36351](https://github.com/anthropics/claude-code/issues/36351), and [#33154](https://github.com/anthropics/claude-code/issues/33154), and watched each of them sit untouched for 30+ days.
 
-![Anthropic Support email thread acknowledging the 1M context regression and stating the issue should be resolved](../img/support-thread.png)
+<details style="margin: 1rem 0 2rem;">
+  <summary><strong>Show the Anthropic Support thread</strong></summary>
+  <p style="margin-top: 1rem;">
+    <img src="../img/support-thread.png"
+         alt="Anthropic Support email thread acknowledging the 1M context regression and stating the issue should be resolved"
+         style="max-width: 100%;">
+  </p>
+</details>
 
 So I went looking for a solution myself.
 

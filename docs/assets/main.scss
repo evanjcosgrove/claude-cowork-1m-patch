@@ -1,0 +1,89 @@
+---
+# Front matter is required so Jekyll routes this file through the Sass compiler.
+# Importing "minima" loads the theme's classic light skin first; the
+# @media block below layers dark overrides on top when the reader's OS is
+# set to a dark color scheme. No JavaScript, no toggle — follows the OS.
+---
+
+@import "minima";
+
+@media (prefers-color-scheme: dark) {
+  // GitHub Primer-esque palette: feels native on a github.io site,
+  // and matches the visual register technical readers expect.
+  body {
+    background-color: #0d1117;
+    color: #c9d1d9;
+  }
+
+  .site-header,
+  .site-footer {
+    background-color: #161b22;
+    border-color: #30363d;
+  }
+
+  .site-title,
+  .site-title:visited,
+  .site-nav .page-link {
+    color: #c9d1d9 !important;
+  }
+
+  a            { color: #58a6ff; }
+  a:visited    { color: #a371f7; }
+  a:hover      { color: #79c0ff; text-decoration-color: #58a6ff; }
+
+  hr,
+  table,
+  table th,
+  table td     { border-color: #30363d; }
+
+  table th     { background-color: #161b22; color: #c9d1d9; }
+  table tr     { background-color: #0d1117; }
+  table tr:nth-child(even) { background-color: #161b22; }
+
+  blockquote {
+    color: #8b949e;
+    border-left-color: #30363d;
+  }
+
+  // Inline code + fenced blocks
+  code, pre {
+    background-color: #161b22;
+    color: #c9d1d9;
+    border-color: #30363d;
+  }
+
+  // Rouge syntax highlighting (Minima's default)
+  .highlight { background-color: #161b22; }
+  .highlighter-rouge .highlight { background-color: #161b22; }
+  .highlight .c, .highlight .c1, .highlight .cm,
+  .highlight .cp, .highlight .cs   { color: #8b949e; font-style: italic; } // comments
+  .highlight .k, .highlight .kc, .highlight .kd,
+  .highlight .kn, .highlight .kp, .highlight .kr,
+  .highlight .kt                   { color: #ff7b72; } // keywords
+  .highlight .s, .highlight .s1, .highlight .s2,
+  .highlight .sb, .highlight .sc, .highlight .sd,
+  .highlight .se, .highlight .sh, .highlight .si,
+  .highlight .sx, .highlight .sr, .highlight .ss   { color: #a5d6ff; } // strings
+  .highlight .nb, .highlight .nf, .highlight .nc,
+  .highlight .nd, .highlight .ne, .highlight .ni,
+  .highlight .no, .highlight .nt   { color: #d2a8ff; } // names / functions
+  .highlight .mi, .highlight .mf,
+  .highlight .mh, .highlight .mo   { color: #79c0ff; } // numbers
+  .highlight .o, .highlight .ow    { color: #ff7b72; } // operators
+  .highlight .p                    { color: #c9d1d9; } // punctuation
+
+  // Soft frame around inline screenshots so the light-UI captures
+  // don't punch a stark white hole in a dark page.
+  .post-content img,
+  .page-content img {
+    box-shadow: 0 0 0 1px #30363d, 0 8px 24px rgba(0, 0, 0, 0.4);
+    border-radius: 4px;
+  }
+
+  // <details> disclosure styling — keep it readable in dark mode.
+  details > summary {
+    color: #c9d1d9;
+    cursor: pointer;
+  }
+  details > summary:hover { color: #58a6ff; }
+}
