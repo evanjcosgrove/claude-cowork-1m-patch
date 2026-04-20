@@ -3,18 +3,26 @@ set -euo pipefail
 
 # patch-claude-1m.sh — Restore 1M context window in Claude Desktop Cowork
 #
-# Two same-length JS swaps inside the model-resolution function (`ZAt`):
+# Two same-length JS swaps inside the model-resolution function:
 #   Layer 1a — bypass server-side feature flag 3885610113 that gates [1m] suffix
-#   Layer 1b — broaden the model allow-list regex /sonnet-4-6|opus-4-6/i so it
-#              also matches opus-4-7 (Anthropic shipped 4-7 to Cowork without
-#              re-enabling 1M for it). New regex: /opus-4-[67](?:)(?:)/i.
+#   Layer 1b — broaden the model allow-list to also cover opus-4-7
+#
+# Layer 1b has TWO known forms across Claude Desktop versions. The preflight
+# detects which form the asar uses and applies the matching same-length swap:
+#   Form A (regex; older asars, ~v1.5xx and earlier):
+#     /sonnet-4-6|opus-4-6/i.test(e) → /opus-4-[67](?:)(?:)/i.test(e)
+#   Form B (array .includes; newer asars, ~v1.31xx+):
+#     ["claude-sonnet-4-6","claude-opus-4-6"] → [ "claude-opus-4-6","claude-opus-4-7" ]
+#     (substring match against e via .some(t => e.includes(t)) — sonnet
+#     intentionally dropped per the "Opus-only scope" caveat in README.)
 #
 # Idempotent. A Python preflight classifies asar state as
 #   needs_1a / needs_1b / needs_both / already_done / unknown
-# (using the same regex as the patch blocks) and applies only the missing
-# layer(s). Atomic writes (same-dir tempfile + fsync + os.replace) and a
-# single EXIT trap that prints a copy-pasteable rollback command protect
-# against partial-write corruption. Backups every run.
+# (using the same byte anchors as the patch blocks) and applies only the
+# missing layer(s) in the detected form. Atomic writes (same-dir tempfile +
+# fsync + os.replace) and a single EXIT trap that prints a copy-pasteable
+# rollback command protect against partial-write corruption. Backups every
+# run.
 #
 # Env overrides:
 #   CLAUDE_APP_PATH                        Override /Applications/Claude.app
@@ -191,39 +199,69 @@ flag_matches = []
 for p in flag_patterns:
     flag_matches.extend(re.findall(p, data))
 
-# Layer 1b — same anchor as the Layer 1b patch block below.
+# Layer 1b — TWO known forms. Same anchors as the Layer 1b patch blocks below.
+# Form A (regex): older asars (~v1.5xx and earlier).
+# Form B (array): newer asars (~v1.31xx+) that swapped the regex literal for
+#                 a JS array used with .some(t => e.includes(t)).
 regex_anchor = b'sonnet-4-6|opus-4-6'
+array_anchor = b'["claude-sonnet-4-6","claude-opus-4-6"]'
 regex_count = data.count(regex_anchor)
+array_count = data.count(array_anchor)
 
 # Positive "patched" markers. The 1a marker uses a regex (not exact length)
 # so a future minifier change that produces a longer/shorter variable name
-# still classifies correctly.
+# still classifies correctly. The 1b markers are exact byte sequences chosen
+# to be unique post-patch.
 patched_1a = bool(re.search(rb'!1/\*_+\*/', data))
-patched_1b = data.count(b'opus-4-[67](?:)(?:)') >= 1
+patched_1b_regex = data.count(b'opus-4-[67](?:)(?:)') >= 1
+patched_1b_array = data.count(b'[ "claude-opus-4-6","claude-opus-4-7" ]') >= 1
+patched_1b = patched_1b_regex or patched_1b_array
+
+# Decide which Layer 1b form this asar uses, unambiguously. A given asar
+# should have exactly one form (either still unpatched or already patched).
+# Anything else (both forms, neither form, multiple matches) is ambiguous
+# and routes to 'unknown'.
+form_1b = 'none'
+needs_1b = False
+if regex_count == 1 and array_count == 0 and not patched_1b_array:
+    form_1b = 'regex'
+    needs_1b = True
+elif array_count == 1 and regex_count == 0 and not patched_1b_regex:
+    form_1b = 'array'
+    needs_1b = True
+elif regex_count == 0 and array_count == 0 and patched_1b_regex and not patched_1b_array:
+    form_1b = 'regex'
+elif regex_count == 0 and array_count == 0 and patched_1b_array and not patched_1b_regex:
+    form_1b = 'array'
 
 needs_1a = len(flag_matches) == 1
-needs_1b = regex_count == 1
 
-if needs_1a and needs_1b:
+if form_1b == 'none':
+    # Form unrecognized — neither anchor present in either state. Anthropic
+    # likely refactored the gate again. Refuse rather than half-patch.
+    state = 'unknown'
+elif needs_1a and needs_1b:
     state = 'needs_both'
 elif needs_1a:
     state = 'needs_1a'
 elif needs_1b:
     state = 'needs_1b'
-elif not flag_matches and regex_count == 0 and patched_1a and patched_1b:
+elif patched_1a and patched_1b and len(flag_matches) == 0 \
+        and regex_count == 0 and array_count == 0:
     state = 'already_done'
 else:
-    # Either ambiguous match counts (>1) or no anchors AND no positive markers
-    # — both cases mean we don't trust this binary.
     state = 'unknown'
 
 print(f"STATE={state}")
 print(f"NEEDS_1A={'1' if needs_1a else '0'}")
 print(f"NEEDS_1B={'1' if needs_1b else '0'}")
+print(f"FORM_1B={form_1b}")
 print(f"FLAG_MATCHES={len(flag_matches)}")
 print(f"REGEX_COUNT={regex_count}")
+print(f"ARRAY_COUNT={array_count}")
 print(f"PATCHED_1A={'1' if patched_1a else '0'}")
-print(f"PATCHED_1B={'1' if patched_1b else '0'}")
+print(f"PATCHED_1B_REGEX={'1' if patched_1b_regex else '0'}")
+print(f"PATCHED_1B_ARRAY={'1' if patched_1b_array else '0'}")
 PYEOF
 ); then
   echo "ERROR: preflight Python failed (asar unreadable or pattern crash)"
@@ -248,9 +286,15 @@ layer_status() {
   fi
 }
 
+if [ "$PATCHED_1B_REGEX" = "1" ] || [ "$PATCHED_1B_ARRAY" = "1" ]; then
+  PATCHED_1B=1
+else
+  PATCHED_1B=0
+fi
+
 echo "  State:    $STATE"
 echo "  Layer 1a: $(layer_status "$NEEDS_1A" "$PATCHED_1A")"
-echo "  Layer 1b: $(layer_status "$NEEDS_1B" "$PATCHED_1B")"
+echo "  Layer 1b: $(layer_status "$NEEDS_1B" "$PATCHED_1B") (form: $FORM_1B)"
 
 case "$STATE" in
   already_done)
@@ -375,15 +419,24 @@ fi
 
 # --- Step 4: Patch Layer 1b (model allow-list broaden to include opus-4-7) ---
 if [ "$NEEDS_1B" = "1" ]; then
-  echo "[4/7] Patching Layer 1b (model allow-list)..."
-  python3 - "$ASAR_PATH" << 'PYEOF'
+  echo "[4/7] Patching Layer 1b ($FORM_1B form)..."
+  python3 - "$ASAR_PATH" "$FORM_1B" << 'PYEOF'
 import os, sys, tempfile
 
 asar_path = sys.argv[1]
-old = b'sonnet-4-6|opus-4-6'   # 19 bytes — matches sonnet-4-6 OR opus-4-6
-new = b'opus-4-[67](?:)(?:)'   # 19 bytes — matches opus-4-6 OR opus-4-7
-                                # (sonnet-4-6 intentionally dropped; see
-                                # README "Opus-only scope" caveat)
+form = sys.argv[2]
+
+# Both forms broaden the allow-list to cover opus-4-6 AND opus-4-7,
+# intentionally dropping sonnet-4-6 (see README "Opus-only scope" caveat).
+if form == 'regex':
+    old = b'sonnet-4-6|opus-4-6'   # 19 bytes — older asars (~v1.5xx)
+    new = b'opus-4-[67](?:)(?:)'   # 19 bytes — same-length swap
+elif form == 'array':
+    old = b'["claude-sonnet-4-6","claude-opus-4-6"]'   # 39 bytes — newer asars (~v1.31xx+)
+    new = b'[ "claude-opus-4-6","claude-opus-4-7" ]'   # 39 bytes — same-length swap
+else:
+    print(f"ERROR: unknown Layer 1b form: {form}")
+    sys.exit(1)
 
 assert len(old) == len(new), f"Length mismatch: {len(old)} vs {len(new)}"
 
@@ -393,7 +446,7 @@ with open(asar_path, 'rb') as f:
 original_size = len(data)
 count = data.count(old)
 if count != 1:
-    print(f"ERROR: Expected 1 occurrence of model regex anchor, found {count}")
+    print(f"ERROR: Expected 1 occurrence of {form} anchor, found {count}")
     sys.exit(1)
 
 new_data = data.replace(old, new, 1)
@@ -534,15 +587,21 @@ for p in flag_patterns:
     flag_matches.extend(re.findall(p, data))
 
 regex_count = data.count(b'sonnet-4-6|opus-4-6')
+array_count = data.count(b'["claude-sonnet-4-6","claude-opus-4-6"]')
 patched_1a = bool(re.search(rb'!1/\*_+\*/', data))
-patched_1b = data.count(b'opus-4-[67](?:)(?:)') >= 1
+patched_1b_regex = data.count(b'opus-4-[67](?:)(?:)') >= 1
+patched_1b_array = data.count(b'[ "claude-opus-4-6","claude-opus-4-7" ]') >= 1
+patched_1b = patched_1b_regex or patched_1b_array
 
-ok = (not flag_matches) and regex_count == 0 and patched_1a and patched_1b
+ok = (not flag_matches) and regex_count == 0 and array_count == 0 \
+        and patched_1a and patched_1b
 print(f"OK={'1' if ok else '0'}")
 print(f"FLAG_MATCHES={len(flag_matches)}")
 print(f"REGEX_COUNT={regex_count}")
+print(f"ARRAY_COUNT={array_count}")
 print(f"PATCHED_1A={'1' if patched_1a else '0'}")
-print(f"PATCHED_1B={'1' if patched_1b else '0'}")
+print(f"PATCHED_1B_REGEX={'1' if patched_1b_regex else '0'}")
+print(f"PATCHED_1B_ARRAY={'1' if patched_1b_array else '0'}")
 PYEOF
 ); then
   echo "ERROR: verification Python failed"
@@ -559,10 +618,12 @@ eval "$VERIFY_OUTPUT"
 
 if [ "$OK" != "1" ]; then
   echo "  FAILED: post-patch state does not match 'already_done'."
-  echo "    unpatched flag matches:  $FLAG_MATCHES"
-  echo "    unpatched regex count:   $REGEX_COUNT"
-  echo "    patched 1a marker:       $PATCHED_1A"
-  echo "    patched 1b marker:       $PATCHED_1B"
+  echo "    unpatched flag matches:    $FLAG_MATCHES"
+  echo "    unpatched regex count:     $REGEX_COUNT"
+  echo "    unpatched array count:     $ARRAY_COUNT"
+  echo "    patched 1a marker:         $PATCHED_1A"
+  echo "    patched 1b regex marker:   $PATCHED_1B_REGEX"
+  echo "    patched 1b array marker:   $PATCHED_1B_ARRAY"
   exit 1
 fi
 

@@ -45,7 +45,14 @@ The ternary is a three-condition OR — if **any** is true, the model name is re
 - **Gate A — Server feature flag.** `Sn("3885610113")` checks a server-side flag. When **off** (current state since 2026-03-19), `!Sn(...)` evaluates to `true`, the ternary short-circuits, and `[1m]` is never appended. You get 200K regardless of your plan.
 - **Gate B — Model allow-list.** Even with the flag on, the regex `/sonnet-4-6|opus-4-6/i` only allows 1M for those two model names. When Anthropic shipped `claude-opus-4-7` to Cowork on 2026-04-18, the regex did **not** match it — so even an already-patched binary downgrades 4-7 sessions to 200K.
 
-The patch addresses both gates with two same-length JS swaps. The function and variable names (`ZAt`, `Sn`) are minified and change between app versions. The flag ID `3885610113` and the literal regex body `sonnet-4-6|opus-4-6` are stable byte anchors across builds — the patch script searches for those, not the variable names.
+The patch addresses both gates with two same-length JS swaps. The function and variable names (`ZAt`, `Sn`, `A7e`, `Ti`, …) are minified and rotate between app versions. The flag ID `3885610113` is the stable Layer 1a anchor.
+
+For Layer 1b, Anthropic refactored the gate from a regex to an array `.includes()` check around Claude Desktop v1.31xx. The script knows both byte anchors and detects which is present at runtime:
+
+- **Form A (regex; older asars, ~v1.5xx and earlier):** anchor `sonnet-4-6|opus-4-6` → `opus-4-[67](?:)(?:)` (19-byte swap).
+- **Form B (array; newer asars, ~v1.31xx+):** anchor `["claude-sonnet-4-6","claude-opus-4-6"]` → `[ "claude-opus-4-6","claude-opus-4-7" ]` (39-byte swap).
+
+If neither anchor is present in either form, the script refuses to half-patch and exits with `unknown` — meaning Anthropic refactored the gate again and the script needs a Form C.
 
 ## Log Evidence
 
@@ -68,7 +75,7 @@ The patch modifies one JS expression in the asar, but the app enforces four inte
 
 | Layer                       | What it checks                                                       | How the patch handles it                                                                                                                                                                                                                 |
 | --------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1. JS application logic** | Two gates inside `ZAt`: server feature flag + model allow-list regex | **1a:** Replace `!Sn("3885610113")` with `!1/*___________*/` (same 17 bytes, evaluates to `false`). **1b:** Replace regex body `sonnet-4-6|opus-4-6` with `opus-4-[67](?:)(?:)` (same 19 bytes, matches both `opus-4-6` and `opus-4-7`). |
+| **1. JS application logic** | Two gates in the model-resolution function: server feature flag + model allow-list (regex on older asars, JS array on newer asars). | **1a:** Replace `!Sn("3885610113")` with `!1/*___________*/` (same 17 bytes, evaluates to `false`). **1b:** Either `sonnet-4-6\|opus-4-6` → `opus-4-[67](?:)(?:)` (regex form, 19 bytes) or `["claude-sonnet-4-6","claude-opus-4-6"]` → `[ "claude-opus-4-6","claude-opus-4-7" ]` (array form, 39 bytes), depending on which anchor the asar contains. |
 | **2. Per-file integrity**   | SHA256 of `index.js` in asar header                                  | Recompute file hash + block hashes, replace in header (same-length)                                                                                                                                                                      |
 | **3. Header integrity**     | SHA256 of asar header in `Info.plist`                                | Recompute via `@electron/asar` `getRawHeader()`, write to plist                                                                                                                                                                          |
 | **4. Code signature**       | macOS entitlements for Cowork's VM sandbox                           | Extract original entitlements before patching, re-sign with `--entitlements`                                                                                                                                                             |
@@ -85,7 +92,7 @@ After re-signing, Cowork may show "Invalid installation" if `com.apple.security.
 ## Caveats
 
 - **Auto-updates overwrite the patch.** Re-run `./patch-claude-1m.sh` after each Claude Desktop update.
-- **Minified names change between versions.** The script matches by two stable byte anchors: the flag ID `3885610113` (Layer 1a) and the literal regex body `sonnet-4-6|opus-4-6` (Layer 1b). Variable and function names (`ZAt`, `Sn`) are not relied on.
+- **Minified names change between versions.** The script matches by stable byte anchors: the flag ID `3885610113` (Layer 1a), and one of two Layer 1b anchors depending on the asar version — `sonnet-4-6|opus-4-6` (regex form, older) or `["claude-sonnet-4-6","claude-opus-4-6"]` (array form, newer). Variable and function names (`ZAt`, `Sn`, `A7e`, `Ti`, …) are not relied on. When Anthropic refactors the gate again, expect to add a Form C.
 - **Opus-only scope.** Layer 1b's new regex `opus-4-[67]` matches `opus-4-6` and `opus-4-7` only. The original regex also matched `sonnet-4-6` — that match is intentionally dropped so the rule is deterministic. If/when Anthropic ships `opus-4-8`, re-run the script after editing the 19-byte literal in the Layer 1b Python block of `patch-claude-1m.sh` (or open an issue).
 - **This modifies the app binary.** The script creates a backup on every run. Fully reversible (see Rollback).
 - **The `ANTHROPIC_DEFAULT_OPUS_MODEL` env var doesn't help.** `LocalAgentModeSessionManager` has its own model resolution path that ignores environment overrides.
