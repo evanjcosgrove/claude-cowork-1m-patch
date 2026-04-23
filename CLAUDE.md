@@ -16,7 +16,7 @@ No build step. Script self-installs `@electron/asar` (pinned to `4.2.0`, install
 
 ## Running the Patch
 
-See [README.md § Quick Start](README.md#quick-start) for install / env vars / verification. This file captures only things that matter when *modifying* the script.
+See [README.md § Before You Run](README.md#before-you-run) for prerequisites and verification. This file captures only things that matter when *modifying* the script.
 
 ## Architecture Decisions
 

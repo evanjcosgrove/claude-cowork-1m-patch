@@ -19,25 +19,50 @@
 
 ---
 
-> [!WARNING]
-> Auto-updates overwrite the patch - re-run `./patch-claude-1m.sh` after each Claude Desktop update.
+<a id="auto-update-disabled"></a>
+
+> [!CAUTION]
+> **Auto-updates are disabled after patching.** Re-signing the app bundle invalidates the original code signature, which stops Claude Desktop's built-in auto-updater from running. To update Claude Desktop, download a fresh installer from <https://claude.ai/download>, install it (this overwrites the patched version while preserving your data, sessions, and settings), then re-run `./patch-claude-1m.sh` on the new version. A solution to restore automatic updates is in progress.
 
 ## Table of Contents
 
-- [Quick Start](#quick-start)
+- [Before You Run](#before-you-run)
+- [Run the Patch](#run-the-patch)
+- [Relaunch Claude](#relaunch-claude)
+- [First Launch After Patching](#first-launch-after-patching)
+- [Verify Success](#verify-success)
+- [Rollback / Troubleshooting](#rollback--troubleshooting)
 - [The Problem](#the-problem)
 - [Scope](#scope)
 - [Compatibility](#compatibility)
 - [Inspect before running](#inspect-before-running)
-- [Verify success](#verify-success)
-- [Rollback](#rollback)
 - [Root Cause](#root-cause-deep-dive) · [How It Works](#how-it-works--four-integrity-layers) · [Log Evidence](#log-evidence)
 - [Caveats](#caveats)
 - [Further Reading](#further-reading)
 - [Related Issues](#related-issues)
 - [Legal](#legal)
 
-## Quick Start
+## Before You Run
+
+**Prerequisites:** macOS, Node.js, Python 3, Claude Desktop installed. The script auto-installs `@electron/asar` to a temp directory if needed.
+
+Complete these steps **before** running the patch script:
+
+1. **Enable Full Disk Access for your terminal app.** Go to `System Settings > Privacy & Security > Full Disk Access` and toggle on the terminal app that will actually launch your shell (`Terminal`, `iTerm2`, `Ghostty`, `Warp`, etc.). Without this, the script can't read or modify files inside `/Applications/Claude.app`.
+
+2. **Be prepared to authorize app modification.** When the script touches `/Applications/Claude.app`, macOS may show a password prompt or a system dialog asking permission to alter an installed application. Enter your macOS password (admin or current user, depending on your system configuration). If your account is not an administrator, an admin will need to authorize the action - or run the script from an admin account.
+
+3. **Quit Claude Desktop** if it's currently running:
+   ```bash
+   osascript -e 'quit app "Claude"'
+   ```
+
+> [!NOTE]
+> The permission prompts above are macOS treating script-driven app modification the same as any other app install or modification - it'll ask you to confirm. If you see a "permission denied" error instead of a password prompt, you almost certainly skipped step 1.
+
+If you want to audit what the script touches before you run it, jump to [Inspect before running](#inspect-before-running).
+
+## Run the Patch
 
 ```bash
 ./patch-claude-1m.sh
@@ -45,13 +70,64 @@
 
 The script handles everything: backs up the original asar, patches the feature flag, updates all integrity hashes, and re-signs the app with preserved entitlements.
 
-After it finishes, restart Claude Desktop and start a new Cowork session:
+## Relaunch Claude
+
+After the patch finishes, relaunch Claude Desktop with the command below:
 
 ```bash
 osascript -e 'quit app "Claude"'; sleep 3; open -a Claude
 ```
 
-**Prerequisites:** Node.js, Python 3, macOS with Claude Desktop installed. The script auto-installs `@electron/asar` to a temp directory if it's not already available.
+You can still reopen Claude manually, but treat that as a fallback. It usually works, but the first manual reopen after patching can rarely stutter, freeze, or crash. If that happens, quit Claude and use the command above.
+
+## First Launch After Patching
+
+After patching, the app's code signature changes. The first time you open Claude Desktop - whether via the relaunch command above or by clicking the app icon - macOS will prompt you for your **login password** to authorize the re-signed app to access keychain entries it had previously stored. You may see **several consecutive prompts** for different keychain entries.
+
+> [!IMPORTANT]
+> Click **"Always Allow"** on each prompt - not just "Allow". "Allow" grants one-time access; "Always Allow" updates the keychain ACL to trust the new signature, so you won't see the prompt on every subsequent launch.
+
+The prompts won't recur until you re-run the patch (which generates a new signature - typically after a manual Claude Desktop update).
+
+## Verify Success
+
+A successful run prints:
+
+```
+Layer 1a (feature flag): BYPASSED
+Layer 1b (model allow-list): BROADENED
+Virtualization entitlement: PRESENT
+```
+
+Then start a **new** Cowork session and confirm `[1m]` is being passed to the spawned model:
+
+```bash
+tail -f ~/Library/Logs/Claude/cowork_vm_node.log | grep -- '--model'
+```
+
+You should see `--model claude-opus-4-7[1m]` (or `claude-opus-4-6[1m]`).
+
+<p align="center">
+  <img src="docs/img/verification.png"
+       alt="Claude Desktop /context showing Model: claude-opus-4-7[1m] and 1M token window after the patch"
+       width="760" />
+</p>
+
+## Rollback / Troubleshooting
+
+Restore from the backup the script created on your Desktop:
+
+```bash
+cp ~/Desktop/app.asar.backup-YYYYMMDD-HHMMSS \
+   /Applications/Claude.app/Contents/Resources/app.asar
+cp ~/Desktop/Info.plist.backup-YYYYMMDD-HHMMSS \
+   /Applications/Claude.app/Contents/Info.plist
+osascript -e 'quit app "Claude"'; sleep 3; open -a Claude
+```
+
+- If Claude stuttered, froze, or crashed after a manual reopen, quit it and use the [recommended relaunch command](#relaunch-claude).
+- To update Claude Desktop after patching, see the [auto-update notice](#auto-update-disabled) at the top of this README - the manual download path also doubles as recovery if patching corrupts something the backup can't fix.
+- If preflight exits `unknown`, open an issue with your Claude Desktop version and the full script output.
 
 ## The Problem
 
@@ -106,42 +182,6 @@ To skip the npm install entirely, preinstall the pinned dependency yourself:
 npm install -g @electron/asar@4.2.0
 ```
 
-## Verify success
-
-A successful run prints:
-
-```
-Layer 1a (feature flag): BYPASSED
-Layer 1b (model allow-list): BROADENED
-Virtualization entitlement: PRESENT
-```
-
-Then quit and relaunch Claude, start a **new** Cowork session, and confirm `[1m]` is being passed to the spawned model:
-
-```bash
-tail -f ~/Library/Logs/Claude/cowork_vm_node.log | grep -- '--model'
-```
-
-You should see `--model claude-opus-4-7[1m]` (or `claude-opus-4-6[1m]`).
-
-<p align="center">
-  <img src="docs/img/verification.png"
-       alt="Claude Desktop /context showing Model: claude-opus-4-7[1m] and 1M token window after the patch"
-       width="760" />
-</p>
-
-## Rollback
-
-Restore from the backup the script created on your Desktop:
-
-```bash
-cp ~/Desktop/app.asar.backup-YYYYMMDD-HHMMSS \
-   /Applications/Claude.app/Contents/Resources/app.asar
-cp ~/Desktop/Info.plist.backup-YYYYMMDD-HHMMSS \
-   /Applications/Claude.app/Contents/Info.plist
-osascript -e 'quit app "Claude"'; sleep 2; open -a Claude
-```
-
 > [!TIP]
 > If macOS rejects the rolled-back app with "Invalid installation" or a Gatekeeper block (the bundle's outer signature still references the patched files' hashes), the cleanest recovery is to reinstall Claude Desktop from <https://claude.ai/download> - about a minute, and you get a fresh signed copy.
 
@@ -183,7 +223,6 @@ All JS replacements must be same-length - any offset shift invalidates V8's comp
 
 ## Caveats
 
-- **Auto-updates overwrite the patch.** Re-run `./patch-claude-1m.sh` after each Claude Desktop update.
 - **Minified names change between versions.** The script matches by stable byte anchors (flag ID + Layer 1b form); minified variable names are never relied on. When Anthropic refactors the gate again, expect to add a Form C - see [docs/integrity-layers.md § Layer 1](docs/integrity-layers.md#layer-1---application-logic-two-js-gates) for the current anchor set.
 
 > [!IMPORTANT]

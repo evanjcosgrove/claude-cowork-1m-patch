@@ -5,6 +5,8 @@ title: Restoring 1M context in Claude Desktop's Cowork mode
 
 <p align="center" markdown="1">*Code: [github.com/evanjcosgrove/claude-cowork-1m-patch](https://github.com/evanjcosgrove/claude-cowork-1m-patch)*</p>
 
+If you're here to use the patch rather than read the reverse-engineering writeup, start with the [README runbook](https://github.com/evanjcosgrove/claude-cowork-1m-patch/blob/main/README.md#before-you-run). The operator instructions live there: enable Full Disk Access for the terminal app running the script, then relaunch Claude with `osascript -e 'quit app "Claude"'; sleep 3; open -a Claude` after patching.
+
 ## The regression <a href="#the-regression" class="h-anchor" aria-hidden="true">#</a>
 {: #the-regression}
 

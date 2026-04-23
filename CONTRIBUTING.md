@@ -13,6 +13,13 @@ The [welcome post](https://github.com/evanjcosgrove/claude-cowork-1m-patch/discu
 - **Security issues** → see [SECURITY.md](SECURITY.md)
 - **Code changes** → Pull request (see below)
 
+## Support triage
+
+Before treating a report as an incompatible Claude Desktop build, ask the reporter to confirm the operator checklist in [README.md](README.md):
+
+- Full Disk Access was enabled for the terminal app that ran `./patch-claude-1m.sh` (`Terminal`, `iTerm2`, `Ghostty`, etc.).
+- Claude was relaunched with `osascript -e 'quit app "Claude"'; sleep 3; open -a Claude`.
+
 ## Pull requests
 
 Especially welcome:

@@ -38,6 +38,13 @@ Output:
 <paste here>
 ```
 
+## Setup checklist
+
+Please confirm both before filing this as an incompatible-build issue:
+
+- [ ] I enabled Full Disk Access for the terminal app that ran `./patch-claude-1m.sh` (`Terminal`, `iTerm2`, `Ghostty`, etc.) via `System Settings > Privacy & Security > Full Disk Access`.
+- [ ] After patching, I relaunched Claude with `osascript -e 'quit app "Claude"'; sleep 3; open -a Claude`.
+
 ## Full script output
 
 Paste the entire `./patch-claude-1m.sh` output below. The lines that matter most are:
